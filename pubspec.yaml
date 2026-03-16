@@ -1,0 +1,43 @@
+name: impostor2
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Iconos estilo iOS
+  cupertino_icons: ^1.0.8
+
+  # Para guardar datos en el dispositivo
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Reglas de estilo de código
+  flutter_lints: ^6.0.0
+
+  # Herramienta para generar el icono de la app
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  # AQUI ESTABA EL ERROR: Faltaba registrar las otras imagenes
+  assets:
+    - assets/fondo.png
+    - assets/fondo_juego.png      # Para la pantalla de juego
+    - assets/fondo_inocentes.png  # Para cuando ganan inocentes
+    - assets/fondo_impostor.png   # Para cuando gana el impostor
+
+# Configuración del Icono de la App
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
