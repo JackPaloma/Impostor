@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; //
-import 'screens/lobby.dart';
-import 'theme.dart';
+import 'package:flutter/services.dart';
+import 'screens/lobby/lobby.dart'; // <--- NUEVA RUTA APUNTANDO A LA CARPETA LOBBY
 
 void main() async {
-  // Asegura que los bindings de Flutter estén inicializados
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Bloquea la orientación de forma permanente en vertical
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -26,8 +23,8 @@ class MyApp extends StatelessWidget {
       title: 'Impostor',
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: AppTheme.primary,
-        scaffoldBackgroundColor: duoBg,
+        primaryColor: const Color(0xFFE3CA94),
+        scaffoldBackgroundColor: const Color(0xFF0A0705),
       ),
       home: const MenuLobby(),
     );

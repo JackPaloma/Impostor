@@ -1,9 +1,12 @@
+// ==========================================
+// CONFIGURACIÓN GLOBAL DEL JUEGO
+// ==========================================
 class ConfiguracionJuego {
   bool modoContraReloj;
   int minutosReloj;
   bool modoCaos;
   bool modoVotacionAnonima;
-  bool modoSoloCategoria; // <--- NUEVO CAMPO
+  bool modoSoloCategoria;
 
   // Ajustes de Impostor
   bool impostorTienePista;
@@ -22,7 +25,7 @@ class ConfiguracionJuego {
     this.minutosReloj = 5,
     this.modoCaos = false,
     this.modoVotacionAnonima = false,
-    this.modoSoloCategoria = false, // <--- VALOR POR DEFECTO
+    this.modoSoloCategoria = false,
     this.impostorTienePista = false,
     this.impostoresSeConocen = false,
     this.muerteSincronizada = false,
@@ -36,6 +39,9 @@ class ConfiguracionJuego {
   });
 }
 
+// ==========================================
+// JUGADOR DURANTE LA PARTIDA
+// ==========================================
 class JugadorEnPartida {
   final String nombre;
   final bool esImpostor;
@@ -43,6 +49,7 @@ class JugadorEnPartida {
   bool esDetective;
   bool estaVivo;
   bool estaSilenciado;
+  final String? rutaFoto; // Mantenemos el soporte para fotos
 
   JugadorEnPartida({
     required this.nombre,
@@ -50,6 +57,7 @@ class JugadorEnPartida {
     this.esComplice = false,
     this.esDetective = false,
     this.estaVivo = true,
-    this.estaSilenciado = false
+    this.estaSilenciado = false,
+    this.rutaFoto,
   });
 }
