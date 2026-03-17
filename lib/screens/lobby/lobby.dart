@@ -109,6 +109,20 @@ class _MenuLobbyState extends State<MenuLobby> {
     prefs.setInt('cantidad_impostores', cantidadImpostores);
   }
 
+  // --- WIDGET AUXILIAR PARA LOS MARCOS ---
+  Widget _buildRuleContainer({required Color color, required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: ebonyInput,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+      ),
+      child: child,
+    );
+  }
+
   void agregarJugador() {
     String nombre = _nameCtrl.text.trim();
     if (nombre.isNotEmpty && !puntajes.containsKey(nombre)) {
@@ -370,30 +384,21 @@ class _MenuLobbyState extends State<MenuLobby> {
             builder: (context, setStateDialog) => AlertDialog(
                 backgroundColor: const Color(0xFF1E1510),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: jewelBlue, width: 2)),
-                title: const Text("REGLAS", style: TextStyle(color: jewelBlue, fontWeight: FontWeight.bold)),
+                title: const Text("AJUSTES", style: TextStyle(color: jewelBlue, fontWeight: FontWeight.bold)),
                 content: SingleChildScrollView(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("MODOS DE JUEGO", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-                          GoldSwitch(title: "⏱️ Contra el Reloj", subtitle: "Gana Impostor si acaba el tiempo.", value: config.modoContraReloj, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.modoContraReloj = v; if(v) config.modoCaos = false; }); }),
-                          if (config.modoContraReloj) Slider(value: config.minutosReloj.toDouble(), min: 2, max: 10, divisions: 8, label: "${config.minutosReloj} min", activeColor: jewelBlue, inactiveColor: goldDark, onChanged: (val) => setStateDialog(() => config.minutosReloj = val.toInt())),
-                          GoldSwitch(title: "🌀 Modo Caos", subtitle: "Nueva palabra.", value: config.modoCaos, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.modoCaos = v; if(v) config.modoContraReloj = false; }); }),
+                          // --- 1. AJUSTE (ORDEN CORREGIDO) ---
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("GENERALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
 
-                          const Divider(height: 20, color: goldDark, thickness: 1),
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("ROLES ESPECIALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-                          GoldSwitch(title: "🤫 El Silencioso", subtitle: "Silencia a uno al inicio.", value: config.rolSilencioso, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolSilencioso = v; })),
-                          GoldSwitch(title: "🔍 Detective", subtitle: "Pregunta a un jugador.", value: config.rolDetective, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolDetective = v; })),
-                          GoldSwitch(title: "🎭 Cómplice", subtitle: "Ayuda a impostores.", value: config.rolComplice, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolComplice = v; })),
+                          _buildRuleContainer(
+                            color: jewelBlue,
+                            child: GoldSwitch(title: "🗳️ Votación Anónima", subtitle: "Votos secretos.", value: config.modoVotacionAnonima, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.modoVotacionAnonima = v)),
+                          ),
 
-                          const Divider(height: 20, color: goldDark, thickness: 1),
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("AJUSTES EXTRA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-
-                          // 🔥 NUEVO: SELECTOR DE MOSTRAR CATEGORÍA
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: jewelBlue, width: 1.5)),
+                          _buildRuleContainer(
+                            color: jewelPurple,
                             child: Row(
                               children: [
                                 Expanded(
@@ -402,47 +407,76 @@ class _MenuLobbyState extends State<MenuLobby> {
                                     children: [
                                       const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)),
                                       Text(
-                                          config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie ve la categoría." :
-                                          config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Solo inocentes la ven." :
-                                          config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Solo el impostor la ve." :
-                                          "Todos ven la categoría.",
+                                          config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Inocentes." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Impostor/es." :
+                                          "Inocentes e Impostor/es.",
                                           style: const TextStyle(color: textMuted, fontSize: 11)
                                       ),
                                     ],
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(10), border: Border.all(color: goldDark)),
-                                  child: DropdownButton<VisibilidadCategoria>(
-                                    value: config.mostrarCategoria,
-                                    dropdownColor: const Color(0xFF1E1510),
-                                    icon: const Padding(padding: EdgeInsets.only(left: 8.0), child: FaIcon(FontAwesomeIcons.chevronDown, color: jewelBlue, size: 14)),
-                                    underline: const SizedBox(),
-                                    style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12),
-                                    items: const [
-                                      DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")),
-                                      DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")),
-                                      DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")),
-                                      DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos")),
-                                    ],
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setStateDialog(() {
-                                          config.mostrarCategoria = val;
-                                        });
-                                      }
-                                    },
-                                  ),
+                                DropdownButton<VisibilidadCategoria>(
+                                  value: config.mostrarCategoria,
+                                  dropdownColor: const Color(0xFF1E1510),
+                                  underline: const SizedBox(),
+                                  style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12),
+                                  items: const [
+                                    DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos")),
+                                  ],
+                                  onChanged: (val) { if (val != null) setStateDialog(() { config.mostrarCategoria = val; }); },
                                 ),
                               ],
                             ),
                           ),
 
-                          GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "Ve la PISTA.", value: config.impostorTienePista, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; }); }),
-                          GoldSwitch(title: "👥 Conocer Aliados", subtitle: "Saben quién es socio.", value: config.impostoresSeConocen, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.impostoresSeConocen = v)),
-                          GoldSwitch(title: "💀 Sincronía Vital", subtitle: "Mueren TODOS.", value: config.muerteSincronizada, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.muerteSincronizada = v)),
-                          GoldSwitch(title: "🗳️ Votación Anónima", subtitle: "Votos secretos.", value: config.modoVotacionAnonima, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.modoVotacionAnonima = v))
+                          _buildRuleContainer(
+                            color: jewelRed,
+                            child: GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "¡El Impostor ve la PISTA!", value: config.impostorTienePista, color: jewelRed, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; }); }),
+                          ),
+                          _buildRuleContainer(
+                            color: jewelRed,
+                            child: GoldSwitch(title: "👥 Conocer Aliados", subtitle: "Los Impostores se Conocen.", value: config.impostoresSeConocen, color: jewelRed, onChanged: (v) => setStateDialog(() => config.impostoresSeConocen = v)),
+                          ),
+                          _buildRuleContainer(
+                            color: jewelRed,
+                            child: GoldSwitch(title: "💀 Sincronía Vital", subtitle: "Los Impostores Mueren Juntos.", value: config.muerteSincronizada, color: jewelRed, onChanged: (v) => setStateDialog(() => config.muerteSincronizada = v)),
+                          ),
+
+                          const Divider(height: 20, color: goldDark, thickness: 1),
+
+                          // --- 2. MODOS DE JUEGO ---
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("MODOS DE JUEGO", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
+                          _buildRuleContainer(
+                            color: jewelYellow,
+                            child: GoldSwitch(title: "⏱️ Contra el Reloj", subtitle: "¡Gana Impostor si Acaba el Tiempo!", value: config.modoContraReloj, color: jewelYellow, onChanged: (v) { setStateDialog(() { config.modoContraReloj = v; if(v) config.modoCaos = false; }); }),
+                          ),
+                          if (config.modoContraReloj) Slider(value: config.minutosReloj.toDouble(), min: 2, max: 10, divisions: 8, label: "${config.minutosReloj} min", activeColor: jewelYellow, inactiveColor: goldDark, onChanged: (val) => setStateDialog(() => config.minutosReloj = val.toInt())),
+
+                          _buildRuleContainer(
+                            color: jewelYellow,
+                            child: GoldSwitch(title: "🌀 Modo Caos", subtitle: "Nueva Palabra Cada Ronda.", value: config.modoCaos, color: jewelYellow, onChanged: (v) { setStateDialog(() { config.modoCaos = v; if(v) config.modoContraReloj = false; }); }),
+                          ),
+
+                          const Divider(height: 20, color: goldDark, thickness: 1),
+
+                          // --- 3. ROLES ESPECIALES ---
+                          const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("ROLES ESPECIALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
+                          _buildRuleContainer(
+                            color: jewelBlue,
+                            child: GoldSwitch(title: "🤫 El Silenciado", subtitle: "Se Silencia a Alguien al Inicio.", value: config.rolSilencioso, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolSilencioso = v; })),
+                          ),
+                          _buildRuleContainer(
+                            color: jewelBlue,
+                            child: GoldSwitch(title: "🔍 Detective", subtitle: "Pregunta de Si o No a un Jugador.", value: config.rolDetective, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolDetective = v; })),
+                          ),
+                          _buildRuleContainer(
+                            color: jewelPurple,
+                            child: GoldSwitch(title: "🎭 Cómplice", subtitle: "Ayuda a los Impostor.", value: config.rolComplice, color: jewelPurple, onChanged: (v) => setStateDialog(() { config.rolComplice = v; })),
+                          ),
                         ]
                     )
                 ),
@@ -627,7 +661,7 @@ class _MenuLobbyState extends State<MenuLobby> {
     String emojisActivos = "";
     if (config.modoContraReloj) emojisActivos += "⏱️ ";
     if (config.modoCaos) emojisActivos += "🌀 ";
-    if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ "; // 🔥 ACTUALIZADO
+    if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ ";
     if (config.rolSilencioso) emojisActivos += "🤫 ";
     if (config.impostorTienePista) emojisActivos += "🕵️ ";
     if (config.modoVotacionAnonima) emojisActivos += "🗳️ ";
@@ -855,7 +889,7 @@ class _MenuLobbyState extends State<MenuLobby> {
                 // 5. BOTONES DE REGLAS Y PACKS
                 Row(
                   children: [
-                    Expanded(child: GestureDetector(onTap: configurarModos, child: PremiumCard(padding: EdgeInsets.zero, child: SizedBox(height: 75, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const FaIcon(FontAwesomeIcons.bookOpen, color: jewelBlue, size: 24), const SizedBox(height: 6), const Text("REGLAS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain)), Text(emojisActivos, style: const TextStyle(fontSize: 10, color: textMuted, fontWeight: FontWeight.w600), textAlign: TextAlign.center)]))))),
+                    Expanded(child: GestureDetector(onTap: configurarModos, child: PremiumCard(padding: EdgeInsets.zero, child: SizedBox(height: 75, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const FaIcon(FontAwesomeIcons.bookOpen, color: jewelBlue, size: 24), const SizedBox(height: 6), const Text("AJUSTES", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain)), Text(emojisActivos, style: const TextStyle(fontSize: 10, color: textMuted, fontWeight: FontWeight.w600), textAlign: TextAlign.center)]))))),
                     const SizedBox(width: 15),
                     Expanded(child: GestureDetector(onTap: configurarCategorias, child: PremiumCard(padding: EdgeInsets.zero, child: SizedBox(height: 75, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const FaIcon(FontAwesomeIcons.layerGroup, color: jewelPurple, size: 24), const SizedBox(height: 6), const Text("PACKS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain)), Text("$categoriasActivasCount Activos", style: const TextStyle(color: textMuted, fontWeight: FontWeight.w600, fontSize: 10))]))))),
                   ],

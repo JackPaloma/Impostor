@@ -16,3 +16,4 @@ const Color jewelRed = Color(0xFFFF4C4C);
 const Color jewelGreen = Color(0xFF00E676);
 const Color jewelBlue = Color(0xFF42A5F5);
 const Color jewelPurple = Color(0xFFAB47BC);
+const Color jewelYellow = Color(0xFFFFF59D);
