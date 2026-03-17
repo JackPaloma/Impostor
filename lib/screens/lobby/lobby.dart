@@ -9,7 +9,7 @@ import '../../datos.dart';
 import '../../theme.dart';
 import '../../models.dart';
 import '../../widgets.dart';
-import '../roles/juego.dart'; // <--- Redirige correctamente a la nueva carpeta
+import '../roles/juego.dart';
 
 import 'lobby_colors.dart';
 import 'lobby_components.dart';
@@ -46,13 +46,21 @@ class _MenuLobbyState extends State<MenuLobby> {
       puntajes = widget.puntajesGuardados!;
       jugadores = puntajes.keys.toList();
     }
+
     if (widget.configGuardada != null) {
       config = widget.configGuardada!;
+
+      for (var key in baseDeDatos.keys) {
+        if (!config.categoriasActivas.containsKey(key)) {
+          config.categoriasActivas[key] = true;
+        }
+      }
     } else {
       Map<String, bool> cats = {};
       for (var key in baseDeDatos.keys) { cats[key] = true; }
       config = ConfiguracionJuego(categoriasActivas: cats);
     }
+
     _cargarDatosGuardados();
   }
 
@@ -94,7 +102,6 @@ class _MenuLobbyState extends State<MenuLobby> {
     prefs.setString('puntajes', jsonEncode(puntajes));
     prefs.setString('fotos_jugadores', jsonEncode(fotosJugadores));
 
-    // <--- FIX DEL ERROR DE LISTA DINÁMICA
     List<dynamic> jsonList = packPersonalizado.map((e) => e.toJson()).toList();
     prefs.setString('palabras_propias', jsonEncode(jsonList));
 
@@ -372,15 +379,67 @@ class _MenuLobbyState extends State<MenuLobby> {
                           GoldSwitch(title: "⏱️ Contra el Reloj", subtitle: "Gana Impostor si acaba el tiempo.", value: config.modoContraReloj, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.modoContraReloj = v; if(v) config.modoCaos = false; }); }),
                           if (config.modoContraReloj) Slider(value: config.minutosReloj.toDouble(), min: 2, max: 10, divisions: 8, label: "${config.minutosReloj} min", activeColor: jewelBlue, inactiveColor: goldDark, onChanged: (val) => setStateDialog(() => config.minutosReloj = val.toInt())),
                           GoldSwitch(title: "🌀 Modo Caos", subtitle: "Nueva palabra.", value: config.modoCaos, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.modoCaos = v; if(v) config.modoContraReloj = false; }); }),
-                          GoldSwitch(title: "🏷️ Solo Categoría", subtitle: "Inocentes solo ven categoría.", value: config.modoSoloCategoria, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.modoSoloCategoria = v; if(v) { config.rolSilencioso = false; config.rolDetective = false; config.rolComplice = false; config.impostorTienePista = false; } }); }),
+
                           const Divider(height: 20, color: goldDark, thickness: 1),
                           const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("ROLES ESPECIALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-                          GoldSwitch(title: "🤫 El Silencioso", subtitle: "Silencia a uno al inicio.", value: config.rolSilencioso, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolSilencioso = v; if(v) config.modoSoloCategoria = false; })),
-                          GoldSwitch(title: "🔍 Detective", subtitle: "Pregunta a un jugador.", value: config.rolDetective, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolDetective = v; if(v) config.modoSoloCategoria = false; })),
-                          GoldSwitch(title: "🎭 Cómplice", subtitle: "Ayuda a impostores.", value: config.rolComplice, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolComplice = v; if(v) config.modoSoloCategoria = false; })),
+                          GoldSwitch(title: "🤫 El Silencioso", subtitle: "Silencia a uno al inicio.", value: config.rolSilencioso, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolSilencioso = v; })),
+                          GoldSwitch(title: "🔍 Detective", subtitle: "Pregunta a un jugador.", value: config.rolDetective, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolDetective = v; })),
+                          GoldSwitch(title: "🎭 Cómplice", subtitle: "Ayuda a impostores.", value: config.rolComplice, color: jewelBlue, onChanged: (v) => setStateDialog(() { config.rolComplice = v; })),
+
                           const Divider(height: 20, color: goldDark, thickness: 1),
                           const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("AJUSTES EXTRA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-                          GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "Ve la PISTA.", value: config.impostorTienePista, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; if(v) config.modoSoloCategoria = false; }); }),
+
+                          // 🔥 NUEVO: SELECTOR DE MOSTRAR CATEGORÍA
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: jewelBlue, width: 1.5)),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Text(
+                                          config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie ve la categoría." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Solo inocentes la ven." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Solo el impostor la ve." :
+                                          "Todos ven la categoría.",
+                                          style: const TextStyle(color: textMuted, fontSize: 11)
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(10), border: Border.all(color: goldDark)),
+                                  child: DropdownButton<VisibilidadCategoria>(
+                                    value: config.mostrarCategoria,
+                                    dropdownColor: const Color(0xFF1E1510),
+                                    icon: const Padding(padding: EdgeInsets.only(left: 8.0), child: FaIcon(FontAwesomeIcons.chevronDown, color: jewelBlue, size: 14)),
+                                    underline: const SizedBox(),
+                                    style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12),
+                                    items: const [
+                                      DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")),
+                                      DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")),
+                                      DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")),
+                                      DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos")),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setStateDialog(() {
+                                          config.mostrarCategoria = val;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "Ve la PISTA.", value: config.impostorTienePista, color: jewelBlue, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; }); }),
                           GoldSwitch(title: "👥 Conocer Aliados", subtitle: "Saben quién es socio.", value: config.impostoresSeConocen, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.impostoresSeConocen = v)),
                           GoldSwitch(title: "💀 Sincronía Vital", subtitle: "Mueren TODOS.", value: config.muerteSincronizada, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.muerteSincronizada = v)),
                           GoldSwitch(title: "🗳️ Votación Anónima", subtitle: "Votos secretos.", value: config.modoVotacionAnonima, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.modoVotacionAnonima = v))
@@ -406,27 +465,125 @@ class _MenuLobbyState extends State<MenuLobby> {
             builder: (context, setStateDialog) => AlertDialog(
                 backgroundColor: const Color(0xFF1E1510),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: jewelPurple, width: 2)),
-                title: const Text("PACKS DE JUEGO", style: TextStyle(color: jewelPurple, fontWeight: FontWeight.bold)),
+                title: Row(
+                  children: const [
+                    FaIcon(FontAwesomeIcons.layerGroup, color: jewelPurple, size: 24),
+                    SizedBox(width: 10),
+                    Text("PACKS", style: TextStyle(color: jewelPurple, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  ],
+                ),
                 content: SizedBox(
                     width: double.maxFinite,
-                    child: ListView(
-                        children: config.categoriasActivas.keys.map((cat) =>
-                            CheckboxListTile(
-                                title: Text(cat, style: const TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 16)),
-                                value: config.categoriasActivas[cat] ?? false,
-                                activeColor: jewelPurple,
-                                checkColor: Colors.white,
-                                side: const BorderSide(color: lobbyGoldDark, width: 2),
-                                onChanged: (bool? val) { setStateDialog(() { config.categoriasActivas[cat] = val!; }); }
-                            )
-                        ).toList()
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ...config.categoriasActivas.keys.map((cat) {
+                            bool isActivo = config.categoriasActivas[cat] ?? false;
+
+                            List<String> partes = cat.split(' ');
+                            String emoji = partes.isNotEmpty ? partes[0] : '';
+                            String nombre = partes.length > 1 ? cat.substring(cat.indexOf(' ') + 1) : cat;
+
+                            return GestureDetector(
+                              onTap: () {
+                                setStateDialog(() {
+                                  config.categoriasActivas[cat] = !isActivo;
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 110,
+                                height: 110,
+                                decoration: BoxDecoration(
+                                  color: isActivo ? jewelPurple.withOpacity(0.15) : ebonyInput,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: isActivo ? jewelPurple : goldDark.withOpacity(0.5),
+                                      width: isActivo ? 2.5 : 1.5
+                                  ),
+                                  boxShadow: isActivo
+                                      ? [BoxShadow(color: jewelPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))]
+                                      : [],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(emoji, style: const TextStyle(fontSize: 32)),
+                                          const SizedBox(height: 8),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                            child: Text(nombre,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                    color: isActivo ? textMain : textMuted,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12
+                                                )
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isActivo)
+                                      const Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: FaIcon(FontAwesomeIcons.solidCircleCheck, color: jewelPurple, size: 18),
+                                      )
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+
+                          Container(
+                            width: 110,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: textMuted.withOpacity(0.3), width: 1.5),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Opacity(
+                                    opacity: 0.5,
+                                    child: const Text("🚀", style: TextStyle(fontSize: 28)),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text("¡Nuevos\nPronto!",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: textMuted.withOpacity(0.6), fontWeight: FontWeight.bold, fontSize: 11)
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
                     )
                 ),
                 actions: [
                   ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: jewelPurple, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: jewelPurple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
+                      ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("LISTO", style: TextStyle(fontWeight: FontWeight.bold))
+                      child: const Text("LISTO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
                   )
                 ]
             )
@@ -470,7 +627,7 @@ class _MenuLobbyState extends State<MenuLobby> {
     String emojisActivos = "";
     if (config.modoContraReloj) emojisActivos += "⏱️ ";
     if (config.modoCaos) emojisActivos += "🌀 ";
-    if (config.modoSoloCategoria) emojisActivos += "🏷️ ";
+    if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ "; // 🔥 ACTUALIZADO
     if (config.rolSilencioso) emojisActivos += "🤫 ";
     if (config.impostorTienePista) emojisActivos += "🕵️ ";
     if (config.modoVotacionAnonima) emojisActivos += "🗳️ ";
@@ -553,57 +710,90 @@ class _MenuLobbyState extends State<MenuLobby> {
                                 else if (sortedScores.length > 2 && pts == sortedScores[2]) medallaWidget = const FaIcon(FontAwesomeIcons.medal, color: Color(0xFFCD7F32), size: 18);
                               }
 
-                              return Dismissible(
-                                key: ValueKey(nombre),
-                                direction: DismissDirection.horizontal,
-                                background: Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: jewelGreen, borderRadius: BorderRadius.circular(16)), alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 20), child: const FaIcon(FontAwesomeIcons.pen, color: Colors.white, size: 24)),
-                                secondaryBackground: Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: jewelRed, borderRadius: BorderRadius.circular(16)), alignment: Alignment.centerRight, padding: const EdgeInsets.symmetric(horizontal: 20), child: const FaIcon(FontAwesomeIcons.trash, color: Colors.white, size: 24)),
-                                confirmDismiss: (direction) async {
-                                  if (direction == DismissDirection.endToStart) return true;
-                                  else if (direction == DismissDirection.startToEnd) { _mostrarDialogoEditar(index); return false; }
-                                  return false;
-                                },
-                                onDismissed: (direction) { if (direction == DismissDirection.endToStart) borrarJugador(index); },
+                              double swipeProgress = 0.0;
 
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  decoration: BoxDecoration(
-                                      color: ebonyInput,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: goldDark, width: 1.5)
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(children: [
-                                        ReorderableDragStartListener(index: index, child: const Padding(padding: EdgeInsets.only(right: 12.0), child: FaIcon(FontAwesomeIcons.gripVertical, color: textMuted, size: 20))),
-                                        GestureDetector(
-                                          onTap: () => _mostrarOpcionesFoto(nombre),
-                                          child: CircleAvatar(
-                                            backgroundColor: goldDark,
-                                            radius: 20,
-                                            backgroundImage: tieneFoto ? FileImage(File(fotosJugadores[nombre]!)) : null,
-                                            child: tieneFoto ? null : const FaIcon(FontAwesomeIcons.camera, color: lobbyGold, size: 16),
+                              return StatefulBuilder(
+                                  key: ValueKey(nombre),
+                                  builder: (context, setStateItem) {
+                                    double currentRadius = swipeProgress > 0.0 ? 0.0 : 16.0;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(currentRadius),
+                                        child: Dismissible(
+                                          key: ValueKey('dismiss_$nombre'),
+                                          direction: DismissDirection.horizontal,
+                                          onUpdate: (details) {
+                                            bool isSwiping = details.progress > 0.0;
+                                            bool wasSwiping = swipeProgress > 0.0;
+                                            if (isSwiping != wasSwiping) {
+                                              setStateItem(() {
+                                                swipeProgress = details.progress;
+                                              });
+                                            }
+                                          },
+                                          background: Container(
+                                            color: jewelGreen,
+                                            alignment: Alignment.centerLeft,
+                                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                                            child: const FaIcon(FontAwesomeIcons.pen, color: Colors.white, size: 24),
+                                          ),
+                                          secondaryBackground: Container(
+                                            color: jewelRed,
+                                            alignment: Alignment.centerRight,
+                                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                                            child: const FaIcon(FontAwesomeIcons.trash, color: Colors.white, size: 24),
+                                          ),
+                                          confirmDismiss: (direction) async {
+                                            if (direction == DismissDirection.endToStart) return true;
+                                            else if (direction == DismissDirection.startToEnd) { _mostrarDialogoEditar(index); return false; }
+                                            return false;
+                                          },
+                                          onDismissed: (direction) { if (direction == DismissDirection.endToStart) borrarJugador(index); },
+
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                            decoration: BoxDecoration(
+                                                color: ebonyInput,
+                                                borderRadius: BorderRadius.circular(currentRadius),
+                                                border: Border.all(color: goldDark, width: 1.5)
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Row(children: [
+                                                  ReorderableDragStartListener(index: index, child: const Padding(padding: EdgeInsets.only(right: 12.0), child: FaIcon(FontAwesomeIcons.gripVertical, color: textMuted, size: 20))),
+                                                  GestureDetector(
+                                                    onTap: () => _mostrarOpcionesFoto(nombre),
+                                                    child: CircleAvatar(
+                                                      backgroundColor: goldDark,
+                                                      radius: 20,
+                                                      backgroundImage: tieneFoto ? FileImage(File(fotosJugadores[nombre]!)) : null,
+                                                      child: tieneFoto ? null : const FaIcon(FontAwesomeIcons.camera, color: lobbyGold, size: 16),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Text(nombre, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textMain))
+                                                ]),
+                                                Row(
+                                                  children: [
+                                                    if (medallaWidget != null) medallaWidget,
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                      decoration: BoxDecoration(color: goldDark, borderRadius: BorderRadius.circular(8), border: Border.all(color: lobbyGoldDark, width: 1)),
+                                                      child: Text("$pts pts", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: lobbyGold)),
+                                                    ),
+                                                  ],
+                                                )
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Text(nombre, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textMain))
-                                      ]),
-                                      Row(
-                                        children: [
-                                          if (medallaWidget != null) medallaWidget,
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(color: goldDark, borderRadius: BorderRadius.circular(8), border: Border.all(color: lobbyGoldDark, width: 1)),
-                                            child: Text("$pts pts", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: lobbyGold)),
-                                          ),
-                                        ],
-                                      )
-                                    ],
-                                  ),
-                                ),
+                                      ),
+                                    );
+                                  }
                               );
                             },
                           ),

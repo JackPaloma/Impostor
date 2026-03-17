@@ -84,7 +84,6 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
     setState(() {
       dragOffset += details.delta.dy;
       if (dragOffset > 0) dragOffset = 0;
-      // AUMENTAMOS EL LÍMITE: La tarjeta ahora subirá casi por completo
       if (dragOffset < -340) dragOffset = -340;
 
       if (dragOffset < -150 && !_sonidoEmitido) {
@@ -120,12 +119,20 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
     String tituloRol = "INOCENTE";
     IconData iconoRol = FontAwesomeIcons.userShield;
 
+    // 🔥 NUEVA LÓGICA DE VISIBILIDAD DE CATEGORÍA
+    bool todosVenCategoria = widget.config.mostrarCategoria == VisibilidadCategoria.todos;
+    bool soloInocentesVenCategoria = widget.config.mostrarCategoria == VisibilidadCategoria.soloInocentes;
+    bool soloImpostorVeCategoria = widget.config.mostrarCategoria == VisibilidadCategoria.soloImpostor;
+
     if (jugadorActual.esImpostor) {
       tituloRol = "IMPOSTOR";
       colorIdentidad = jewelRed;
       iconoRol = FontAwesomeIcons.userSecret;
       verPalabra = false;
-      verCategoria = false;
+
+      // ¿El impostor ve la categoría?
+      verCategoria = todosVenCategoria || soloImpostorVeCategoria;
+
       verPista = widget.config.impostorTienePista;
 
       if (widget.config.impostoresSeConocen) {
@@ -140,16 +147,22 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
       tituloRol = "CÓMPLICE";
       colorIdentidad = jewelPurple;
       iconoRol = FontAwesomeIcons.masksTheater;
-      verPalabra = !widget.config.modoSoloCategoria;
-      verCategoria = widget.config.modoSoloCategoria;
+      verPalabra = true; // El cómplice siempre sabe la palabra para ayudar
+
+      // ¿El cómplice ve la categoría en lugar de la palabra? (Si quisieras que el cómplice fuera tratado como inocente aquí)
+      // Como el cómplice sabe la palabra, ver la categoría es opcional o irrelevante, pero la mostramos si "todos" la ven.
+      verCategoria = todosVenCategoria;
       verPista = false;
 
     } else {
+      // INOCENTE
       tituloRol = "INOCENTE";
       colorIdentidad = jewelBlue;
       iconoRol = FontAwesomeIcons.userShield;
-      verPalabra = !widget.config.modoSoloCategoria;
-      verCategoria = widget.config.modoSoloCategoria;
+      verPalabra = true;
+
+      // ¿El inocente ve la categoría?
+      verCategoria = todosVenCategoria || soloInocentesVenCategoria;
       verPista = false;
     }
 
@@ -193,7 +206,6 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
                         ),
                         child: SingleChildScrollView(
                           physics: const BouncingScrollPhysics(),
-                          // ZONA SEGURA (top: 110): Empuja los elementos hacia abajo para que la tarjeta de arriba no los tape
                           padding: const EdgeInsets.only(top: 110, bottom: 20, left: 15, right: 15),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -231,13 +243,21 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
 
                               const SizedBox(height: 15),
 
+                              // 🔥 MOSTRAR PALABRA Y/O CATEGORÍA
                               if (verPalabra)
                                 Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                     decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(12), border: Border.all(color: goldDark)),
                                     child: Text(widget.carta.palabra, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textMain))
                                 )
-                              else if (verCategoria)
+                              else if (!jugadorActual.esImpostor && !jugadorActual.esComplice)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 10.0),
+                                  child: Text("Palabra Oculta 🔒", style: TextStyle(color: textMuted, fontWeight: FontWeight.bold)),
+                                ),
+
+                              if (verCategoria && widget.carta.categoria.isNotEmpty)
                                 Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                     decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(12), border: Border.all(color: goldDark)),
@@ -246,9 +266,7 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
                                         const Text("CATEGORÍA:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMuted)),
                                         Text(widget.carta.categoria.toUpperCase(), textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorIdentidad)),
                                       ],
-                                    ))
-                              else if (!jugadorActual.esImpostor && !jugadorActual.esComplice)
-                                  const Text("Palabra Oculta 🔒", style: TextStyle(color: textMuted, fontWeight: FontWeight.bold)),
+                                    )),
 
                               if (verPista)
                                 Padding(
