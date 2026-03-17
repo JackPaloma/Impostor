@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-// IMPORTACIONES PARA FIREBASE Y QR
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../services/sala_service.dart';
@@ -52,7 +51,6 @@ class _MenuLobbyState extends State<MenuLobby> {
   @override
   void initState() {
     super.initState();
-    // MAGIA DE RECONEXIÓN: Si venimos de jugar, reciclamos la sala
     if (widget.salaReconectada != null) {
       codigoSalaActual = widget.salaReconectada;
       FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({'estado': 'lobby'});
@@ -66,9 +64,7 @@ class _MenuLobbyState extends State<MenuLobby> {
     if (widget.configGuardada != null) {
       config = widget.configGuardada!;
       for (var key in baseDeDatos.keys) {
-        if (!config.categoriasActivas.containsKey(key)) {
-          config.categoriasActivas[key] = true;
-        }
+        if (!config.categoriasActivas.containsKey(key)) config.categoriasActivas[key] = true;
       }
     } else {
       Map<String, bool> cats = {};
@@ -122,12 +118,7 @@ class _MenuLobbyState extends State<MenuLobby> {
   }
 
   Widget _buildRuleContainer({required Color color, required Widget child}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.6), width: 1.5)),
-      child: child,
-    );
+    return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.6), width: 1.5)), child: child);
   }
 
   void agregarJugador() {
@@ -159,18 +150,18 @@ class _MenuLobbyState extends State<MenuLobby> {
     _guardarTodo();
   }
 
+  // 🔥 LAS FOTOS AHORA SE COMPRIMEN PARA ENVIARLAS A LA WEB
   void _mostrarOpcionesFoto(String nombre) {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        margin: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
+        margin: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
         child: SafeArea(
           child: Wrap(
             children: [
               Padding(padding: const EdgeInsets.all(20.0), child: Text("FOTO DE $nombre", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: lobbyGold))),
-              ListTile(leading: const FaIcon(FontAwesomeIcons.camera, color: lobbyGold, size: 24), title: const Text('Tomar Foto', style: TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 16)), onTap: () async { Navigator.pop(context); final XFile? photo = await _picker.pickImage(source: ImageSource.camera, maxWidth: 800, maxHeight: 800); if (photo != null) { setState(() => fotosJugadores[nombre] = photo.path); _guardarTodo(); } }),
-              ListTile(leading: const FaIcon(FontAwesomeIcons.image, color: lobbyGold, size: 24), title: const Text('Elegir de la Galería', style: TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 16)), onTap: () async { Navigator.pop(context); final XFile? image = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800); if (image != null) { setState(() => fotosJugadores[nombre] = image.path); _guardarTodo(); } }),
+              ListTile(leading: const FaIcon(FontAwesomeIcons.camera, color: lobbyGold, size: 24), title: const Text('Tomar Foto', style: TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 16)), onTap: () async { Navigator.pop(context); final XFile? photo = await _picker.pickImage(source: ImageSource.camera, maxWidth: 300, maxHeight: 300, imageQuality: 70); if (photo != null) { setState(() => fotosJugadores[nombre] = photo.path); _guardarTodo(); } }),
+              ListTile(leading: const FaIcon(FontAwesomeIcons.image, color: lobbyGold, size: 24), title: const Text('Elegir de la Galería', style: TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 16)), onTap: () async { Navigator.pop(context); final XFile? image = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 300, maxHeight: 300, imageQuality: 70); if (image != null) { setState(() => fotosJugadores[nombre] = image.path); _guardarTodo(); } }),
               if (fotosJugadores.containsKey(nombre)) ListTile(leading: const FaIcon(FontAwesomeIcons.trashCan, color: jewelRed, size: 24), title: const Text('Borrar Foto', style: TextStyle(color: jewelRed, fontWeight: FontWeight.w600, fontSize: 16)), onTap: () { Navigator.pop(context); setState(() => fotosJugadores.remove(nombre)); _guardarTodo(); }),
               const SizedBox(height: 10),
             ],
@@ -181,8 +172,7 @@ class _MenuLobbyState extends State<MenuLobby> {
   }
 
   void _mostrarDialogoEditar(int index) {
-    String nombreAnterior = jugadores[index];
-    TextEditingController editCtrl = TextEditingController(text: nombreAnterior);
+    String nombreAnterior = jugadores[index]; TextEditingController editCtrl = TextEditingController(text: nombreAnterior);
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -199,19 +189,11 @@ class _MenuLobbyState extends State<MenuLobby> {
 
   void agregarPalabra() {
     if (_palabraCtrl.text.isNotEmpty && _pistaCtrl.text.isNotEmpty && _categoriaCtrl.text.isNotEmpty) {
-      setState(() {
-        packPersonalizado.add(CartaJuego(_palabraCtrl.text, _pistaCtrl.text, categoria: _categoriaCtrl.text));
-        _palabraCtrl.clear(); _pistaCtrl.clear(); _categoriaCtrl.clear();
-      });
-      _guardarTodo();
-      Navigator.pop(context);
+      setState(() { packPersonalizado.add(CartaJuego(_palabraCtrl.text, _pistaCtrl.text, categoria: _categoriaCtrl.text)); _palabraCtrl.clear(); _pistaCtrl.clear(); _categoriaCtrl.clear(); }); _guardarTodo(); Navigator.pop(context);
     }
   }
 
-  void borrarPalabraPersonalizada(int index) {
-    setState(() => packPersonalizado.removeAt(index));
-    _guardarTodo();
-  }
+  void borrarPalabraPersonalizada(int index) { setState(() => packPersonalizado.removeAt(index)); _guardarTodo(); }
 
   void mostrarDialogoCrear() {
     showDialog(
@@ -219,20 +201,8 @@ class _MenuLobbyState extends State<MenuLobby> {
         builder: (_) => AlertDialog(
             backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGoldDark, width: 2)),
             title: const Text("CREAR PALABRA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(
-                child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GoldInput(controller: _palabraCtrl, hint: "Palabra"), const SizedBox(height: 10),
-                      GoldInput(controller: _pistaCtrl, hint: "Pista"), const SizedBox(height: 10),
-                      GoldInput(controller: _categoriaCtrl, hint: "Categoría"),
-                    ]
-                )
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))),
-              ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: agregarPalabra, child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.bold)))
-            ]
+            content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [GoldInput(controller: _palabraCtrl, hint: "Palabra"), const SizedBox(height: 10), GoldInput(controller: _pistaCtrl, hint: "Pista"), const SizedBox(height: 10), GoldInput(controller: _categoriaCtrl, hint: "Categoría")])),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: agregarPalabra, child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.bold)))]
         )
     );
   }
@@ -244,24 +214,8 @@ class _MenuLobbyState extends State<MenuLobby> {
             builder: (context, setStateDialog) => AlertDialog(
                 backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGoldDark, width: 2)),
                 title: const Text("MIS PALABRAS", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold)),
-                content: SizedBox(
-                    width: double.maxFinite, height: 300,
-                    child: packPersonalizado.isEmpty ? const Center(child: Text("Lista vacía", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))) : ListView.builder(
-                        itemCount: packPersonalizado.length,
-                        itemBuilder: (context, index) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: goldDark, width: 1))),
-                            child: ListTile(
-                              title: Text(packPersonalizado[index].palabra, style: const TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 18)),
-                              subtitle: Text("Pista: ${packPersonalizado[index].pista}", style: const TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.w500)),
-                              trailing: IconButton(icon: const FaIcon(FontAwesomeIcons.trashCan, color: jewelRed, size: 24), onPressed: () { borrarPalabraPersonalizada(index); setStateDialog(() {}); }),
-                            )
-                        )
-                    )
-                ),
-                actions: [
-                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: ebonyInput, foregroundColor: textMain, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () => Navigator.pop(context), child: const Text("CERRAR"))
-                ]
+                content: SizedBox(width: double.maxFinite, height: 300, child: packPersonalizado.isEmpty ? const Center(child: Text("Lista vacía", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))) : ListView.builder(itemCount: packPersonalizado.length, itemBuilder: (context, index) => Container(margin: const EdgeInsets.only(bottom: 8), decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: goldDark, width: 1))), child: ListTile(title: Text(packPersonalizado[index].palabra, style: const TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 18)), subtitle: Text("Pista: ${packPersonalizado[index].pista}", style: const TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.w500)), trailing: IconButton(icon: const FaIcon(FontAwesomeIcons.trashCan, color: jewelRed, size: 24), onPressed: () { borrarPalabraPersonalizada(index); setStateDialog(() {}); }))))),
+                actions: [ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: ebonyInput, foregroundColor: textMain, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () => Navigator.pop(context), child: const Text("CERRAR"))]
             )
         )
     );
@@ -293,45 +247,16 @@ class _MenuLobbyState extends State<MenuLobby> {
                         crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
                         children: [
                           const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("GENERALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
-
                           _buildRuleContainer(color: jewelBlue, child: GoldSwitch(title: "🗳️ Votación Anónima", subtitle: "Votos secretos.", value: config.modoVotacionAnonima, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.modoVotacionAnonima = v))),
-
                           _buildRuleContainer(
                             color: jewelPurple,
                             child: Row(
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)),
-                                      Text(
-                                          config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie." :
-                                          config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Inocentes." :
-                                          config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Impostor/es." :
-                                          "Inocentes e Impostor/es.",
-                                          style: const TextStyle(color: textMuted, fontSize: 11)
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                DropdownButton<VisibilidadCategoria>(
-                                  value: config.mostrarCategoria,
-                                  dropdownColor: const Color(0xFF1E1510),
-                                  underline: const SizedBox(),
-                                  style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12),
-                                  items: const [
-                                    DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")),
-                                    DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")),
-                                    DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")),
-                                    DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos")),
-                                  ],
-                                  onChanged: (val) { if (val != null) setStateDialog(() { config.mostrarCategoria = val; }); },
-                                ),
+                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)), Text(config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie." : config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Inocentes." : config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Impostor/es." : "Inocentes e Impostor/es.", style: const TextStyle(color: textMuted, fontSize: 11))])),
+                                DropdownButton<VisibilidadCategoria>(value: config.mostrarCategoria, dropdownColor: const Color(0xFF1E1510), underline: const SizedBox(), style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12), items: const [DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")), DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")), DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")), DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos"))], onChanged: (val) { if (val != null) setStateDialog(() { config.mostrarCategoria = val; }); }),
                               ],
                             ),
                           ),
-
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "¡El Impostor ve la PISTA!", value: config.impostorTienePista, color: jewelRed, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; }); })),
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "👥 Conocer Aliados", subtitle: "Los Impostores se Conocen.", value: config.impostoresSeConocen, color: jewelRed, onChanged: (v) => setStateDialog(() => config.impostoresSeConocen = v))),
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "💀 Sincronía Vital", subtitle: "Los Impostores Mueren Juntos.", value: config.muerteSincronizada, color: jewelRed, onChanged: (v) => setStateDialog(() => config.muerteSincronizada = v))),
@@ -400,27 +325,113 @@ class _MenuLobbyState extends State<MenuLobby> {
     ).then((_) { if (mounted) setState((){}); });
   }
 
-  void iniciarPartida() {
+  void gestionarSalaWeb() async {
+    if (jugadores.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Añade al menos 3 jugadores primero.", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: jewelRed));
+      return;
+    }
+
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: lobbyGold)));
+
+    if (codigoSalaActual == null) {
+      codigoSalaActual = (1000 + Random().nextInt(9000)).toString();
+      Map<String, dynamic> mapJugadores = {};
+      for(var nombre in jugadores) {
+        mapJugadores[nombre] = {'reclamadoPorId': null, 'listo': false};
+      }
+      await FirebaseDatabase.instance.ref('salas/$codigoSalaActual').set({
+        'estado': 'lobby',
+        'jugadores': mapJugadores,
+        'configuracion': {
+          'mostrarCategoria': config.mostrarCategoria.toString(),
+          'impostorTienePista': config.impostorTienePista
+        }
+      });
+    } else {
+      DataSnapshot snap = await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores').get();
+      Map<dynamic, dynamic> prev = snap.exists ? snap.value as Map<dynamic, dynamic> : {};
+      Map<String, dynamic> mapJugadores = {};
+      for(var nombre in jugadores) {
+        mapJugadores[nombre] = {
+          'reclamadoPorId': prev[nombre]?['reclamadoPorId'],
+          'listo': false
+        };
+      }
+      await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores').set(mapJugadores);
+      await FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({'estado': 'lobby'});
+    }
+
+    if (mounted) Navigator.pop(context);
+
+    String urlWeb = "https://impostor-53fc4.web.app/?sala=$codigoSalaActual&v=${DateTime.now().millisecondsSinceEpoch}";
+    showDialog(
+        context: context,
+        builder: (contextDialog) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGold, width: 2)),
+          title: const Center(child: Text("SALA ABIERTA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: 2))),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Pide a los demás que escaneen esto:", textAlign: TextAlign.center, style: TextStyle(color: textMuted, fontSize: 13)),
+                const SizedBox(height: 15),
+                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: SizedBox(width: 200, height: 200, child: QrImageView(data: urlWeb, version: QrVersions.auto, size: 200.0, backgroundColor: Colors.white))),
+                const SizedBox(height: 15),
+                Text("CÓDIGO: $codigoSalaActual", style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: 4)),
+                const SizedBox(height: 15),
+                const Divider(color: goldDark),
+                const Text("JUGADORES (Host controla los restantes)", style: TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.bold, fontSize: 11)),
+                StreamBuilder<DatabaseEvent>(
+                    stream: _salaService.escucharSala(codigoSalaActual!),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || snapshot.data?.snapshot.value == null) return const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: lobbyGold));
+                      Map<dynamic, dynamic> data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
+                      Map<dynamic, dynamic> jugadoresData = data['jugadores'] ?? {};
+                      return Container(
+                        height: 120, margin: const EdgeInsets.only(top: 10),
+                        child: ListView.builder(
+                          itemCount: jugadoresData.length,
+                          itemBuilder: (context, index) {
+                            String nombre = jugadoresData.keys.elementAt(index);
+                            Map<dynamic, dynamic> datosJugador = jugadoresData[nombre];
+                            bool estaReclamado = datosJugador['reclamadoPorId'] != null;
+                            return ListTile(
+                              dense: true,
+                              leading: FaIcon(estaReclamado ? FontAwesomeIcons.mobileScreenButton : FontAwesomeIcons.user, color: estaReclamado ? jewelGreen : textMuted, size: 18),
+                              title: Text(nombre, style: TextStyle(color: estaReclamado ? textMain : textMuted, decoration: estaReclamado ? TextDecoration.lineThrough : null, fontWeight: estaReclamado ? FontWeight.bold : FontWeight.normal)),
+                              trailing: estaReclamado ? const Text("¡Listo!", style: TextStyle(color: jewelGreen, fontSize: 12)) : const Text("En Host...", style: TextStyle(color: lobbyGold, fontSize: 12)),
+                            );
+                          },
+                        ),
+                      );
+                    }
+                )
+              ],
+            ),
+          ),
+          actions: [
+            Center(child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: lobbyGoldDark, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                onPressed: () => Navigator.pop(contextDialog),
+                child: const Text("CERRAR VENTANA", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))
+            ))
+          ],
+        )
+    );
+  }
+
+  void iniciarPartida() async {
     if (jugadores.length < 3) return;
     List<CartaJuego> poolPalabras = [];
     config.categoriasActivas.forEach((categoria, estaActiva) {
-      if (estaActiva && baseDeDatos.containsKey(categoria)) {
-        poolPalabras.addAll(baseDeDatos[categoria]!.map((c) => CartaJuego(c.palabra, c.pista, categoria: categoria)));
-      }
+      if (estaActiva && baseDeDatos.containsKey(categoria)) poolPalabras.addAll(baseDeDatos[categoria]!.map((c) => CartaJuego(c.palabra, c.pista, categoria: categoria)));
     });
-
     if (usarPersonalizadas) {
       if (packPersonalizado.isNotEmpty) poolPalabras.addAll(packPersonalizado);
-      else if (poolPalabras.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡No hay palabras disponibles!", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: jewelRed));
-        return;
-      }
+      else if (poolPalabras.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡No hay palabras disponibles!", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: jewelRed)); return; }
     }
-
-    if (poolPalabras.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Activa al menos una categoría!", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)), backgroundColor: lobbyGold));
-      return;
-    }
+    if (poolPalabras.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Activa al menos una categoría!", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)), backgroundColor: lobbyGold)); return; }
 
     final carta = poolPalabras[Random().nextInt(poolPalabras.length)];
     Set<int> indicesImpostores = {};
@@ -436,163 +447,57 @@ class _MenuLobbyState extends State<MenuLobby> {
       return JugadorEnPartida(nombre: jugadores[index], esImpostor: indicesImpostores.contains(index), esComplice: (index == indiceComplice), rutaFoto: fotosJugadores[jugadores[index]]);
     });
 
-    // SI YA HAY SALA ACTIVA (RECONEXIÓN), SALTAMOS EL DIÁLOGO DEL QR
     if (codigoSalaActual != null) {
-      _crearSalaFirebase(listaJugadoresObj, carta, poolPalabras);
-      return;
-    }
+      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: lobbyGold)));
 
-    showModalBottomSheet(
-      context: context, backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        margin: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
-        child: SafeArea(
-          child: Wrap(
-            children: [
-              const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("¿CÓMO VAN A JUGAR?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: lobbyGold)))),
-              ListTile(leading: const FaIcon(FontAwesomeIcons.mobileScreen, color: jewelBlue, size: 28), title: const Text('Pasar el Teléfono', style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 18)), subtitle: const Text('Modo local clásico. No requiere internet.', style: TextStyle(color: textMuted)), onTap: () { Navigator.pop(context); _irAJuegoDirecto(listaJugadoresObj, carta, poolPalabras); }),
-              const Divider(color: goldDark, indent: 20, endIndent: 20),
-              ListTile(leading: const FaIcon(FontAwesomeIcons.qrcode, color: jewelGreen, size: 28), title: const Text('Usar Varios Celulares', style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 18)), subtitle: const Text('Escanean un QR (No necesitan instalar la app).', style: TextStyle(color: textMuted)), onTap: () { Navigator.pop(context); _crearSalaFirebase(listaJugadoresObj, carta, poolPalabras); }),
-              const SizedBox(height: 10),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+      // 🔥 COMPRIMIR FOTOS PARA LA WEB
+      Map<dynamic, dynamic> prevJugadores = {};
+      try {
+        DataSnapshot snap = await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores').get();
+        if (snap.exists && snap.value != null) prevJugadores = snap.value as Map<dynamic, dynamic>;
+      } catch (e) {}
 
-  void _irAJuegoDirecto(List<JugadorEnPartida> listaJugadoresObj, CartaJuego carta, List<CartaJuego> poolPalabras) {
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: listaJugadoresObj, puntajes: puntajes, carta: carta, config: config, packUsado: poolPalabras)));
-  }
-
-  void _crearSalaFirebase(List<JugadorEnPartida> listaJugadoresObj, CartaJuego carta, List<CartaJuego> poolPalabras) async {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: lobbyGold)));
-
-    try {
-      if (codigoSalaActual == null) {
-        codigoSalaActual = await _salaService.crearSala(listaJugadoresObj, config);
-      }
-
-      Map<String, dynamic> mapJugadores = {};
-      for(var j in listaJugadoresObj) {
-        mapJugadores[j.nombre] = {'esImpostor': j.esImpostor, 'esComplice': j.esComplice, 'reclamadoPorId': null};
+      for (var j in listaJugadoresObj) {
+        String? fotoBase64;
+        if (j.rutaFoto != null) {
+          try {
+            File f = File(j.rutaFoto!);
+            if (f.existsSync()) fotoBase64 = base64Encode(f.readAsBytesSync());
+          } catch(e) {}
+        }
+        await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores/${j.nombre}').update({
+          'esImpostor': j.esImpostor,
+          'esComplice': j.esComplice,
+          'listo': false,
+          'fotoBase64': fotoBase64,
+          'reclamadoPorId': prevJugadores[j.nombre]?['reclamadoPorId']
+        });
       }
 
       await FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({
-        'jugadores': mapJugadores,
-        'carta': {'palabra': carta.palabra, 'pista': carta.pista, 'categoria': carta.categoria}
+        'estado': 'revelando_roles',
+        'carta': {'palabra': carta.palabra, 'pista': carta.pista, 'categoria': carta.categoria, 'mostrarCategoria': config.mostrarCategoria.toString(), 'impostorTienePista': config.impostorTienePista}
       });
 
-      if (!context.mounted) return;
-      Navigator.pop(context);
-      _mostrarDialogoEsperandoInvitados(listaJugadoresObj, carta, poolPalabras);
-    } catch (e) {
-      if (!context.mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error de conexión: $e")));
+      DataSnapshot snap = await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores').get();
+      List<String> reclamados = [];
+      if (snap.exists && snap.value != null) {
+        Map<dynamic, dynamic> map = snap.value as Map<dynamic, dynamic>;
+        map.forEach((k, v) { if (v['reclamadoPorId'] != null) reclamados.add(k.toString()); });
+      }
+
+      if (mounted) Navigator.pop(context);
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: listaJugadoresObj, puntajes: puntajes, carta: carta, config: config, packUsado: poolPalabras, codigoSala: codigoSalaActual, jugadoresReclamadosWeb: reclamados)));
+    } else {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: listaJugadoresObj, puntajes: puntajes, carta: carta, config: config, packUsado: poolPalabras)));
     }
-  }
-
-  void _mostrarDialogoEsperandoInvitados(List<JugadorEnPartida> listaJugadoresObj, CartaJuego carta, List<CartaJuego> poolPalabras) {
-    // 🔥 URL DE FIREBASE CON EL TRUCO ANTI-CACHÉ VINCULADO
-    String urlWeb = "https://impostor-53fc4.web.app/?sala=$codigoSalaActual&v=${DateTime.now().millisecondsSinceEpoch}";
-
-    showDialog(
-        context: context, barrierDismissible: false,
-        builder: (contextDialog) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGold, width: 2)),
-          title: const Center(child: Text("SALA CREADA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 22, letterSpacing: 2))),
-
-          content: SizedBox(
-            width: 320,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text("Pide a los demás que escaneen esto con su cámara:", textAlign: TextAlign.center, style: TextStyle(color: textMuted, fontSize: 13)),
-                const SizedBox(height: 15),
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: SizedBox(width: 200, height: 200, child: QrImageView(data: urlWeb, version: QrVersions.auto, size: 200.0, backgroundColor: Colors.white))),
-                const SizedBox(height: 15),
-                Text("CÓDIGO: $codigoSalaActual", style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: 4)),
-                const SizedBox(height: 15),
-                const Divider(color: goldDark),
-                const Text("JUGADORES (Host controla los restantes)", style: TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.bold, fontSize: 11)),
-
-                StreamBuilder<DatabaseEvent>(
-                    stream: _salaService.escucharSala(codigoSalaActual!),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData || snapshot.data?.snapshot.value == null) return const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(color: lobbyGold));
-                      Map<dynamic, dynamic> data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-                      Map<dynamic, dynamic> jugadoresData = data['jugadores'] ?? {};
-
-                      return Container(
-                        height: 120, margin: const EdgeInsets.only(top: 10),
-                        child: ListView.builder(
-                          itemCount: jugadoresData.length,
-                          itemBuilder: (context, index) {
-                            String nombre = jugadoresData.keys.elementAt(index);
-                            Map<dynamic, dynamic> datosJugador = jugadoresData[nombre];
-                            bool estaReclamado = datosJugador['reclamadoPorId'] != null;
-
-                            return ListTile(
-                              dense: true,
-                              leading: FaIcon(estaReclamado ? FontAwesomeIcons.mobileScreenButton : FontAwesomeIcons.user, color: estaReclamado ? jewelGreen : textMuted, size: 18),
-                              title: Text(nombre, style: TextStyle(color: estaReclamado ? textMain : textMuted, decoration: estaReclamado ? TextDecoration.lineThrough : null, fontWeight: estaReclamado ? FontWeight.bold : FontWeight.normal)),
-                              trailing: estaReclamado ? const Text("¡Listo!", style: TextStyle(color: jewelGreen, fontSize: 12)) : const Text("En Host...", style: TextStyle(color: lobbyGold, fontSize: 12)),
-                            );
-                          },
-                        ),
-                      );
-                    }
-                )
-              ],
-            ),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            TextButton(onPressed: () { _salaService.cambiarEstado(codigoSalaActual!, 'cancelada'); Navigator.pop(contextDialog); }, child: const Text("CANCELAR", style: TextStyle(color: jewelRed, fontWeight: FontWeight.bold))),
-            ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: lobbyGoldDark, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                onPressed: () async {
-                  DataSnapshot snap = await FirebaseDatabase.instance.ref('salas/$codigoSalaActual/jugadores').get();
-                  List<String> reclamados = [];
-                  if (snap.exists) {
-                    Map<dynamic, dynamic> map = snap.value as Map<dynamic, dynamic>;
-                    map.forEach((k, v) { if (v['reclamadoPorId'] != null) reclamados.add(k.toString()); });
-                  }
-
-                  await FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({'estado': 'revelando_roles'});
-                  if (!contextDialog.mounted) return;
-                  Navigator.pop(contextDialog);
-
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(
-                    listaJugadores: listaJugadoresObj, puntajes: puntajes, carta: carta, config: config, packUsado: poolPalabras,
-                    codigoSala: codigoSalaActual,
-                    jugadoresReclamadosWeb: reclamados,
-                  )));
-                },
-                child: const Text("¡EMPEZAR!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16))
-            )
-          ],
-        )
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     int categoriasActivasCount = config.categoriasActivas.values.where((v) => v).length;
-
     String emojisActivos = "";
-    if (config.modoContraReloj) emojisActivos += "⏱️ ";
-    if (config.modoCaos) emojisActivos += "🌀 ";
-    if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ ";
-    if (config.rolSilencioso) emojisActivos += "🤫 ";
-    if (config.impostorTienePista) emojisActivos += "🕵️ ";
-    if (config.modoVotacionAnonima) emojisActivos += "🗳️ ";
-    if (config.impostoresSeConocen) emojisActivos += "👥 ";
-    if (config.muerteSincronizada) emojisActivos += "💀 ";
-    if (config.rolDetective) emojisActivos += "🔍 ";
-    if (config.rolComplice) emojisActivos += "🎭 ";
+    if (config.modoContraReloj) emojisActivos += "⏱️ "; if (config.modoCaos) emojisActivos += "🌀 "; if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ "; if (config.rolSilencioso) emojisActivos += "🤫 "; if (config.impostorTienePista) emojisActivos += "🕵️ "; if (config.modoVotacionAnonima) emojisActivos += "🗳️ "; if (config.impostoresSeConocen) emojisActivos += "👥 "; if (config.muerteSincronizada) emojisActivos += "💀 "; if (config.rolDetective) emojisActivos += "🔍 "; if (config.rolComplice) emojisActivos += "🎭 ";
     if (emojisActivos.isEmpty) emojisActivos = "Clásico";
 
     int maxUI = maxImpostoresPermitidos;
@@ -715,24 +620,6 @@ class _MenuLobbyState extends State<MenuLobby> {
                     ),
                   ],
 
-                  PremiumCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                    child: Row(
-                      children: [
-                        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: lobbyGold.withOpacity(0.15), shape: BoxShape.circle), child: const FaIcon(FontAwesomeIcons.penToSquare, color: lobbyGold, size: 22)),
-                        const SizedBox(width: 12),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("PALABRAS PROPIAS", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textMain)), Text(usarPersonalizadas ? "${packPersonalizado.length} activas" : "Desactivadas", style: const TextStyle(color: textMuted, fontWeight: FontWeight.w600, fontSize: 12))])),
-                        Switch(value: usarPersonalizadas, activeColor: lobbyGold, activeTrackColor: lobbyGold.withOpacity(0.3), inactiveThumbColor: textMuted, inactiveTrackColor: ebonyInput, onChanged: (v) { setState(() => usarPersonalizadas = v); _guardarTodo(); }),
-                        if (usarPersonalizadas) ...[
-                          const SizedBox(width: 10),
-                          GestureDetector(onTap: gestionarPalabras, child: const FaIcon(FontAwesomeIcons.listUl, color: lobbyGold, size: 24)),
-                          const SizedBox(width: 15),
-                          GestureDetector(onTap: mostrarDialogoCrear, child: const FaIcon(FontAwesomeIcons.circlePlus, color: lobbyGold, size: 24)),
-                        ]
-                      ],
-                    ),
-                  ),
-
                   Row(
                     children: [
                       Expanded(child: GestureDetector(onTap: configurarModos, child: PremiumCard(padding: EdgeInsets.zero, child: SizedBox(height: 75, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const FaIcon(FontAwesomeIcons.bookOpen, color: jewelBlue, size: 24), const SizedBox(height: 6), const Text("AJUSTES", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textMain)), Text(emojisActivos, style: const TextStyle(fontSize: 10, color: textMuted, fontWeight: FontWeight.w600), textAlign: TextAlign.center)]))))),
@@ -745,9 +632,19 @@ class _MenuLobbyState extends State<MenuLobby> {
                   Row(
                     children: [
                       Expanded(
+                        flex: 4,
                         child: StartGameButton(
                             isActive: jugadores.length >= 3,
                             onTap: jugadores.length >= 3 ? iniciarPartida : null
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 1,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, padding: const EdgeInsets.symmetric(vertical: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 5),
+                          onPressed: jugadores.length >= 3 ? gestionarSalaWeb : null,
+                          child: const FaIcon(FontAwesomeIcons.qrcode, color: Colors.white, size: 24),
                         ),
                       ),
                     ],

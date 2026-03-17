@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 
@@ -20,9 +21,8 @@ class PantallaJuego extends StatefulWidget {
   final CartaJuego carta;
   final ConfiguracionJuego config;
   final List<CartaJuego> packUsado;
-
   final String? codigoSala;
-  final List<String>? jugadoresReclamadosWeb; // 🔥 Lista de los que ya tienen celular
+  final List<String>? jugadoresReclamadosWeb;
 
   const PantallaJuego({
     super.key,
@@ -46,87 +46,94 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
   late AnimationController _animController;
   late Animation<double> _animation;
 
-  // 🔥 Solo anotamos a los jugadores que NO tienen celular
   late List<int> indicesVivosLocales;
   bool todosLocalesListos = false;
   bool _sonidoEmitido = false;
+
+  StreamSubscription? _subConexion;
+  Map<String, String?> _estadosConexion = {};
+  bool _cambiandoADebate = false;
 
   @override
   void initState() {
     super.initState();
     indicesVivosLocales = [];
 
-    // Filtramos para saltarnos a los que están en la Web
     for (int i = 0; i < widget.listaJugadores.length; i++) {
       if (widget.listaJugadores[i].estaVivo) {
         bool estaReclamado = widget.jugadoresReclamadosWeb?.contains(widget.listaJugadores[i].nombre) ?? false;
-        if (!estaReclamado) {
-          indicesVivosLocales.add(i); // Este jugador necesita ver la pantalla del Líder
-        }
+        if (!estaReclamado) indicesVivosLocales.add(i);
       }
     }
 
-    // Si TODOS los jugadores están en su celular web, pasamos a la pantalla de espera
-    if (indicesVivosLocales.isEmpty) {
-      todosLocalesListos = true;
-    }
+    if (indicesVivosLocales.isEmpty) todosLocalesListos = true;
 
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _animation = const AlwaysStoppedAnimation(0.0);
     _animController.addListener(() => setState(() => dragOffset = _animation.value));
+
+    // 🔥 VIGILANCIA EN TIEMPO REAL
+    if (widget.codigoSala != null) {
+      _subConexion = FirebaseDatabase.instance.ref('salas/${widget.codigoSala}/jugadores').onValue.listen((event) {
+        if (!mounted || _cambiandoADebate) return;
+        if (event.snapshot.exists && event.snapshot.value != null) {
+          Map<dynamic, dynamic> map = event.snapshot.value as Map<dynamic, dynamic>;
+          bool todosWebListos = true;
+
+          map.forEach((k, v) {
+            String nombre = k.toString();
+            String? claim = v['reclamadoPorId'];
+            bool estaListo = v['listo'] ?? false;
+
+            // Alerta de desconexión
+            if (_estadosConexion.containsKey(nombre) && _estadosConexion[nombre] != null && claim == null) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("⚠️ $nombre se ha desconectado", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: Colors.red));
+            }
+            _estadosConexion[nombre] = claim;
+
+            // Verificar si todos están listos (solo contamos a los que están vivos)
+            bool estaVivo = widget.listaJugadores.any((j) => j.nombre == nombre && j.estaVivo);
+            if (estaVivo && !estaListo) todosWebListos = false;
+          });
+
+          // Si los locales ya terminaron y la web también, vamos solos al debate
+          if (todosLocalesListos && todosWebListos) {
+            _cambiandoADebate = true;
+            _irAlDebate();
+          }
+        }
+      });
+    }
   }
 
   void completarTurno() {
+    int indiceReal = indicesVivosLocales[turno];
+    String nombreActual = widget.listaJugadores[indiceReal].nombre;
+
+    // Le avisamos a Firebase que el local ya vio su rol
+    if (widget.codigoSala != null) {
+      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}/jugadores/$nombreActual').update({'listo': true});
+    }
+
     if (turno < indicesVivosLocales.length - 1) {
       setState(() {
-        turno++;
-        dragOffset = 0.0;
-        mostrandoTransicion = true;
-        _sonidoEmitido = false;
+        turno++; dragOffset = 0.0; mostrandoTransicion = true; _sonidoEmitido = false;
       });
     } else {
-      // Si ya todos los que no tienen celular vieron su tarjeta...
-      if (widget.codigoSala != null && widget.jugadoresReclamadosWeb != null && widget.jugadoresReclamadosWeb!.isNotEmpty) {
-        // ...Y hay gente en la web, mostramos la pantalla para esperar que terminen
-        setState(() {
-          todosLocalesListos = true;
-        });
-      } else {
-        // ...Si jugamos solos (local), vamos al debate
-        _irAlDebate();
-      }
+      setState(() { todosLocalesListos = true; });
+      if (widget.codigoSala == null) _irAlDebate(); // Si es 100% local, no esperamos a la web
     }
   }
 
   void _irAlDebate() {
-    // Le avisa a la Web que se acabó la espera
-    if (widget.codigoSala != null) {
-      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'debate'});
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PantallaDebate(
-          listaJugadores: widget.listaJugadores,
-          puntajes: widget.puntajes,
-          carta: widget.carta,
-          config: widget.config,
-          packUsado: widget.packUsado,
-        ),
-      ),
-    );
+    if (widget.codigoSala != null) FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'debate'});
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaDebate(listaJugadores: widget.listaJugadores, puntajes: widget.puntajes, carta: widget.carta, config: widget.config, packUsado: widget.packUsado, codigoSala: widget.codigoSala, jugadoresReclamadosWeb: widget.jugadoresReclamadosWeb)));
   }
 
   void revelarTarjeta() => setState(() => mostrandoTransicion = false);
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      dragOffset += details.delta.dy;
-      if (dragOffset > 0) dragOffset = 0;
-      if (dragOffset < -340) dragOffset = -340;
-      if (dragOffset < -150 && !_sonidoEmitido) { Sonidos.playTick(); _sonidoEmitido = true; }
-    });
+    setState(() { dragOffset += details.delta.dy; if (dragOffset > 0) dragOffset = 0; if (dragOffset < -340) dragOffset = -340; if (dragOffset < -150 && !_sonidoEmitido) { Sonidos.playTick(); _sonidoEmitido = true; } });
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
@@ -136,13 +143,13 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
 
   @override
   void dispose() {
+    _subConexion?.cancel();
     _animController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 POP SCOPE CORREGIDO PARA EVITAR CIERRES ABRUPTOS DE LA APP
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
@@ -150,8 +157,7 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
         bool? confirmar = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1510),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFFE3CA94), width: 2)),
+            backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFFE3CA94), width: 2)),
             title: const Text("¿Abandonar Partida?", style: TextStyle(color: Color(0xFFE3CA94), fontWeight: FontWeight.bold)),
             content: const Text("Volverás al lobby y esta partida se cancelará.", style: TextStyle(color: Colors.white70)),
             actions: [
@@ -160,41 +166,29 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
             ],
           ),
         );
-
         if (confirmar == true && context.mounted) {
-          // Si abandona, cancela la sala web para todos
-          if (widget.codigoSala != null) {
-            await FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'cancelada'});
-          }
-          // Y vuelve al Lobby sin cerrar la app
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MenuLobby()));
+          if (widget.codigoSala != null) await FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'cancelada'});
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MenuLobby(salaReconectada: widget.codigoSala)));
         }
       },
       child: Scaffold(
         body: DuoFondo(
           child: SafeArea(
-            // 🔥 PANTALLA ESPECIAL: CUANDO EL HOST YA TERMINÓ PERO ESTÁ ESPERANDO A LOS WEB
             child: todosLocalesListos
                 ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const FaIcon(FontAwesomeIcons.mobileScreen, color: jewelBlue, size: 80),
-                  const SizedBox(height: 20),
-                  const Text("JUGADORES WEB", style: TextStyle(color: lobbyGold, fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  const Text("Esperando a que los jugadores\nen la web vean sus roles...", textAlign: TextAlign.center, style: TextStyle(color: textMuted, fontSize: 16)),
-                  const SizedBox(height: 50),
-                  // El Host presiona esto cuando todos gritan "¡Ya vi mi rol!"
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    onPressed: _irAlDebate,
-                    child: const Text("TODOS LISTOS -> INICIAR DEBATE", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  )
+                children: const [
+                  FaIcon(FontAwesomeIcons.mobileScreen, color: jewelBlue, size: 80),
+                  SizedBox(height: 20),
+                  Text("JUGADORES WEB", style: TextStyle(color: lobbyGold, fontSize: 24, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 10),
+                  Text("Esperando a que todos los\njugadores pongan 'ESTOY LISTO'...", textAlign: TextAlign.center, style: TextStyle(color: textMuted, fontSize: 16)),
+                  SizedBox(height: 50),
+                  CircularProgressIndicator(color: jewelGreen)
                 ],
               ),
             )
-            // PANTALLA NORMAL DE DESLIZAR TARJETAS (Solo para los que NO están en la Web)
                 : Builder(
                 builder: (context) {
                   int indiceReal = indicesVivosLocales[turno];
@@ -210,10 +204,7 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
                   if (jugadorActual.esImpostor) {
                     tituloRol = "IMPOSTOR"; colorIdentidad = jewelRed; iconoRol = FontAwesomeIcons.userSecret;
                     verPalabra = false; verCategoria = todosVenCategoria || soloImpostorVeCategoria; verPista = widget.config.impostorTienePista;
-                    if (widget.config.impostoresSeConocen) {
-                      List<String> aliados = widget.listaJugadores.where((j) => j.esImpostor && j.nombre != jugadorActual.nombre).map((j) => j.nombre).toList();
-                      if (aliados.isNotEmpty) textoAliados = aliados.join(", ");
-                    }
+                    if (widget.config.impostoresSeConocen) { List<String> aliados = widget.listaJugadores.where((j) => j.esImpostor && j.nombre != jugadorActual.nombre).map((j) => j.nombre).toList(); if (aliados.isNotEmpty) textoAliados = aliados.join(", "); }
                   } else if (jugadorActual.esComplice) {
                     tituloRol = "CÓMPLICE"; colorIdentidad = jewelPurple; iconoRol = FontAwesomeIcons.masksTheater;
                     verPalabra = true; verCategoria = todosVenCategoria; verPista = false;
@@ -260,12 +251,10 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
                                   ),
                                 ),
                               ),
-
                               Transform.translate(
                                 offset: Offset(0, dragOffset),
                                 child: GestureDetector(
-                                  onVerticalDragUpdate: _onVerticalDragUpdate,
-                                  onVerticalDragEnd: _onVerticalDragEnd,
+                                  onVerticalDragUpdate: _onVerticalDragUpdate, onVerticalDragEnd: _onVerticalDragEnd,
                                   child: Container(
                                     width: 300, height: 420,
                                     decoration: BoxDecoration(color: ebonyCard, border: Border.all(color: lobbyGoldDark, width: 2), borderRadius: BorderRadius.circular(24), boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 15, offset: Offset(0, -5))]),
@@ -275,13 +264,8 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
                                         Container(height: 110, width: 110, decoration: BoxDecoration(color: ebonyInput, shape: BoxShape.circle, border: Border.all(color: lobbyGoldDark, width: 3), image: jugadorActual.rutaFoto != null ? DecorationImage(image: FileImage(File(jugadorActual.rutaFoto!)), fit: BoxFit.cover) : null), child: jugadorActual.rutaFoto == null ? const Center(child: FaIcon(FontAwesomeIcons.userSecret, size: 50, color: lobbyGold)) : null),
                                         const SizedBox(height: 30),
                                         const Text("CONFIDENCIAL", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 3.0, color: lobbyGold)),
-                                        const SizedBox(height: 15),
-                                        const Divider(color: goldDark, thickness: 2, indent: 40, endIndent: 40),
-                                        const Spacer(),
-                                        const FaIcon(FontAwesomeIcons.chevronUp, size: 40, color: textMuted),
-                                        const SizedBox(height: 5),
-                                        const Text("DESLIZA PARA VER", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 2.0, color: textMuted)),
-                                        const SizedBox(height: 30),
+                                        const SizedBox(height: 15), const Divider(color: goldDark, thickness: 2, indent: 40, endIndent: 40), const Spacer(),
+                                        const FaIcon(FontAwesomeIcons.chevronUp, size: 40, color: textMuted), const SizedBox(height: 5), const Text("DESLIZA PARA VER", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 2.0, color: textMuted)), const SizedBox(height: 30),
                                       ],
                                     ),
                                   ),
