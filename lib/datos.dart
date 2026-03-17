@@ -7,6 +7,7 @@ import 'packs/pack_lol.dart';
 import 'packs/pack_cine_tv.dart';
 import 'packs/pack_marcas.dart';
 import 'packs/pack_anime.dart';
+import 'packs/pack_objetos.dart';
 
 // Añade los demás a medida que los vayas creando...
 
@@ -18,5 +19,6 @@ final Map<String, List<CartaJuego>> baseDeDatos = {
   "🎬 Cine y TV": packCineTv,
   "🏷️ Marcas": packMarcas,
   "⛩️ Anime": packAnime,
+  "🪥 Objetos Cotidianos": packObjetos,
 
 };
