@@ -4,6 +4,10 @@ import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:convert';
+
+// 🔥 IMPORTANTE PARA LA RED
+import 'package:firebase_database/firebase_database.dart';
+
 import '../../models.dart';
 import '../../widgets.dart';
 import '../../audio.dart';
@@ -22,6 +26,9 @@ class PantallaDebate extends StatefulWidget {
   final ConfiguracionJuego config;
   final List<CartaJuego> packUsado;
 
+  // 🔥 RECIBIMOS EL CÓDIGO DE SALA
+  final String? codigoSala;
+
   const PantallaDebate({
     super.key,
     required this.listaJugadores,
@@ -29,6 +36,7 @@ class PantallaDebate extends StatefulWidget {
     required this.carta,
     required this.config,
     required this.packUsado,
+    this.codigoSala, // 🔥 NUEVO
   });
 
   @override
@@ -53,7 +61,16 @@ class _PantallaDebateState extends State<PantallaDebate> {
 
     if (widget.config.modoContraReloj) {
       _segundosRestantes = widget.config.minutosReloj * 60;
+
+      // 🔥 AVISAMOS A LA WEB CUÁNDO TERMINA EL RELOJ
+      if (widget.codigoSala != null) {
+        int tiempoFinMs = DateTime.now().millisecondsSinceEpoch + (_segundosRestantes * 1000);
+        FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+          'tiempoFin': tiempoFinMs
+        });
+      }
     }
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
@@ -80,6 +97,13 @@ class _PantallaDebateState extends State<PantallaDebate> {
       final bool esHorario = Random().nextBool();
       final String direccionText = esHorario ? "HORARIO" : "ANTIHORARIO";
       final IconData direccionIcon = esHorario ? FontAwesomeIcons.arrowRotateRight : FontAwesomeIcons.arrowRotateLeft;
+
+      // 🔥 LE DECIMOS A LA WEB QUIÉN EMPIEZA A HABLAR
+      if (widget.codigoSala != null) {
+        FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+          'primerJugador': jugadorInicial.nombre.toUpperCase()
+        });
+      }
 
       if (!mounted) return;
       await showDialog(
@@ -289,6 +313,15 @@ class _PantallaDebateState extends State<PantallaDebate> {
       }
     });
 
+    // 🔥 LE AVISAMOS A LA WEB QUIÉN FUE EL ELIMINADO
+    if (widget.codigoSala != null) {
+      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+        'estado': 'revelacion_eliminado',
+        'eliminado_nombre': jugador.nombre.toUpperCase(),
+        'eliminado_esImpostor': jugador.esImpostor
+      });
+    }
+
     showDialog(
         context: context,
         barrierDismissible: false,
@@ -337,6 +370,16 @@ class _PantallaDebateState extends State<PantallaDebate> {
       }
     });
     _guardarPuntajesEnDisco();
+
+    // 🔥 LE AVISAMOS A LA WEB QUE EL JUEGO TERMINÓ Y MOSTRAR RESULTADOS
+    if (widget.codigoSala != null) {
+      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+        'estado': 'puntajes',
+        'resultados': {
+          'ganador': gananInocentes ? "INOCENTES" : "IMPOSTORES"
+        }
+      });
+    }
   }
 
   void ejecutarEventosRonda() async {
@@ -354,7 +397,25 @@ class _PantallaDebateState extends State<PantallaDebate> {
         ),
       );
       if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: widget.listaJugadores, puntajes: widget.puntajes, carta: nuevaCarta, config: widget.config, packUsado: widget.packUsado)));
+
+      // En modo Caos, se debe reiniciar la fase de roles para todos
+      if (widget.codigoSala != null) {
+        FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+          'estado': 'revelando_roles',
+          'carta': {
+            'palabra': nuevaCarta.palabra,
+            'pista': nuevaCarta.pista,
+            'categoria': nuevaCarta.categoria
+          }
+        });
+      }
+
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: widget.listaJugadores, puntajes: widget.puntajes, carta: nuevaCarta, config: widget.config, packUsado: widget.packUsado, codigoSala: widget.codigoSala)));
+    } else {
+      // Si no hay modo Caos, volvemos al debate web normal
+      if (widget.codigoSala != null) {
+        FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'debate'});
+      }
     }
   }
 
@@ -363,128 +424,160 @@ class _PantallaDebateState extends State<PantallaDebate> {
     if (!_mostrarResultadosFinales) {
       // --- FASE DE DEBATE (Pantalla del Temporizador) ---
       int vivos = widget.listaJugadores.where((j) => j.estaVivo).length;
-      return Scaffold(
-        backgroundColor: const Color(0xFF150A0A), // Fondo rojizo muy oscuro
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: jewelRed, width: 4), color: ebonyInput),
-                child: const FaIcon(FontAwesomeIcons.magnifyingGlass, size: 70, color: jewelRed),
-              ),
-              const SizedBox(height: 30),
-              Text(widget.config.modoContraReloj ? "TIEMPO RESTANTE" : "ENCUENTREN AL\nIMPOSTOR", textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: textMain, letterSpacing: 2.0)),
-              const SizedBox(height: 15),
-              Text(formatoTiempo, style: const TextStyle(fontSize: 70, fontWeight: FontWeight.w900, color: jewelRed, fontFeatures: [FontFeature.tabularFigures()])),
-              const SizedBox(height: 10),
-              Text("$vivos JUGADORES VIVOS", style: const TextStyle(color: textMuted, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-              const SizedBox(height: 60),
-              SizedBox(width: 220, child: GoldButton(text: "VOTAR", onPressed: abrirVotacion)),
-            ],
+      return PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) async {
+          if (didPop) return;
+          bool? confirmar = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1510),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFFE3CA94), width: 2)),
+              title: const Text("¿Abandonar Partida?", style: TextStyle(color: Color(0xFFE3CA94), fontWeight: FontWeight.bold)),
+              content: const Text("Volverás al lobby y esta partida se cancelará.", style: TextStyle(color: Colors.white70)),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("CANCELAR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)), onPressed: () => Navigator.pop(context, true), child: const Text("SALIR", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+              ],
+            ),
+          );
+
+          if (confirmar == true && context.mounted) {
+            if (widget.codigoSala != null) await FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'cancelada'});
+            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MenuLobby()), (route) => false);
+          }
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFF150A0A), // Fondo rojizo muy oscuro
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: jewelRed, width: 4), color: ebonyInput),
+                  child: const FaIcon(FontAwesomeIcons.magnifyingGlass, size: 70, color: jewelRed),
+                ),
+                const SizedBox(height: 30),
+                Text(widget.config.modoContraReloj ? "TIEMPO RESTANTE" : "ENCUENTREN AL\nIMPOSTOR", textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: textMain, letterSpacing: 2.0)),
+                const SizedBox(height: 15),
+                Text(formatoTiempo, style: const TextStyle(fontSize: 70, fontWeight: FontWeight.w900, color: jewelRed, fontFeatures: [FontFeature.tabularFigures()])),
+                const SizedBox(height: 10),
+                Text("$vivos JUGADORES VIVOS", style: const TextStyle(color: textMuted, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                const SizedBox(height: 60),
+                SizedBox(width: 220, child: GoldButton(text: "VOTAR", onPressed: abrirVotacion)),
+              ],
+            ),
           ),
         ),
       );
     }
 
     // --- FASE DE RESULTADOS FINALES ---
-    return Scaffold(
-      body: DuoFondo(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                Text(ganadorMensaje, textAlign: TextAlign.center, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: colorGanador, letterSpacing: 2.0)),
-                const SizedBox(height: 10),
-                Text("TIEMPO: $formatoTiempo", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textMuted, letterSpacing: 2.0)),
-                const SizedBox(height: 30),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MenuLobby(puntajesGuardados: widget.puntajes, configGuardada: widget.config, salaReconectada: widget.codigoSala)), (r) => false);
+      },
+      child: Scaffold(
+        body: DuoFondo(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  Text(ganadorMensaje, textAlign: TextAlign.center, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: colorGanador, letterSpacing: 2.0)),
+                  const SizedBox(height: 10),
+                  Text("TIEMPO: $formatoTiempo", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textMuted, letterSpacing: 2.0)),
+                  const SizedBox(height: 30),
 
-                // TARJETA DE PALABRA
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
-                  decoration: BoxDecoration(color: ebonyCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, offset: Offset(0, 5), blurRadius: 10)]),
-                  child: Column(children: [
-                    Text(widget.config.modoCaos ? "ÚLTIMA PALABRA:" : "LA PALABRA ERA:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textMuted, letterSpacing: 1.5)),
-                    const SizedBox(height: 5),
-                    Text(widget.carta.palabra.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 35, fontWeight: FontWeight.w900, color: lobbyGold, letterSpacing: 1.0))
-                  ]),
-                ),
+                  // TARJETA DE PALABRA
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+                    decoration: BoxDecoration(color: ebonyCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, offset: Offset(0, 5), blurRadius: 10)]),
+                    child: Column(children: [
+                      Text(widget.config.modoCaos ? "ÚLTIMA PALABRA:" : "LA PALABRA ERA:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textMuted, letterSpacing: 1.5)),
+                      const SizedBox(height: 5),
+                      Text(widget.carta.palabra.toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 35, fontWeight: FontWeight.w900, color: lobbyGold, letterSpacing: 1.0))
+                    ]),
+                  ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // LISTA DE PUNTAJES
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(color: ebonyCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: goldDark, width: 1.5)),
-                    child: ListView.builder(
-                      itemCount: widget.listaJugadores.length,
-                      itemBuilder: (context, index) {
-                        final jugador = widget.listaJugadores[index];
-                        int pts = widget.puntajes[jugador.nombre] ?? 0;
+                  // LISTA DE PUNTAJES
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(color: ebonyCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: goldDark, width: 1.5)),
+                      child: ListView.builder(
+                        itemCount: widget.listaJugadores.length,
+                        itemBuilder: (context, index) {
+                          final jugador = widget.listaJugadores[index];
+                          int pts = widget.puntajes[jugador.nombre] ?? 0;
 
-                        int ganancia = 0;
-                        if (jugador.esComplice) {
-                          ganancia = (!ganaronInocentes) ? 2 : 0;
-                        } else if (jugador.esImpostor) {
-                          ganancia = (!ganaronInocentes) ? 3 : 0;
-                        } else {
-                          ganancia = (ganaronInocentes) ? 1 : 0;
-                        }
+                          int ganancia = 0;
+                          if (jugador.esComplice) {
+                            ganancia = (!ganaronInocentes) ? 2 : 0;
+                          } else if (jugador.esImpostor) {
+                            ganancia = (!ganaronInocentes) ? 3 : 0;
+                          } else {
+                            ganancia = (ganaronInocentes) ? 1 : 0;
+                          }
 
-                        bool fueCastigado = (jugador.nombre == _jugadorCastigado);
+                          bool fueCastigado = (jugador.nombre == _jugadorCastigado);
 
-                        return ScoreItemAnimado(
-                            nombre: jugador.nombre,
-                            esImpostor: jugador.esImpostor,
-                            esComplice: jugador.esComplice,
-                            estaVivo: jugador.estaVivo,
-                            puntajeFinal: pts,
-                            ganancia: ganancia,
-                            fueCastigado: fueCastigado
-                        );
-                      },
+                          return ScoreItemAnimado(
+                              nombre: jugador.nombre,
+                              esImpostor: jugador.esImpostor,
+                              esComplice: jugador.esComplice,
+                              estaVivo: jugador.estaVivo,
+                              puntajeFinal: pts,
+                              ganancia: ganancia,
+                              fueCastigado: fueCastigado
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // BOTONES FINALES
-                Row(
-                  children: [
-                    if (!_puntoQuitado) ...[
+                  // BOTONES FINALES
+                  Row(
+                    children: [
+                      if (!_puntoQuitado) ...[
+                        Expanded(
+                          flex: 1,
+                          child: GoldButton(
+                              text: "", // Texto vacío porque usamos icono
+                              icon: FontAwesomeIcons.bolt,
+                              colorOverride: ebonyInput,
+                              textColorOverride: jewelRed,
+                              onPressed: abrirDialogoCastigo
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
-                        flex: 1,
+                        flex: 3,
                         child: GoldButton(
-                            text: "", // Texto vacío porque usamos icono
-                            icon: FontAwesomeIcons.bolt,
-                            colorOverride: ebonyInput,
-                            textColorOverride: jewelRed,
-                            onPressed: abrirDialogoCastigo
+                            text: "JUGAR OTRA VEZ",
+                            onPressed: () {
+                              // 🔥 VOLVEMOS AL LOBBY PASANDO EL CÓDIGO ACTUAL PARA NO PERDER INVITADOS WEB
+                              Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => MenuLobby(puntajesGuardados: widget.puntajes, configGuardada: widget.config, salaReconectada: widget.codigoSala)),
+                                      (r) => false
+                              );
+                            }
                         ),
                       ),
-                      const SizedBox(width: 10),
                     ],
-                    Expanded(
-                      flex: 3,
-                      child: GoldButton(
-                          text: "JUGAR OTRA VEZ",
-                          onPressed: () {
-                            Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (_) => MenuLobby(puntajesGuardados: widget.puntajes, configGuardada: widget.config)),
-                                    (r) => false
-                            );
-                          }
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
