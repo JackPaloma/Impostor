@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "370050164069",
+    "firebase_url": "https://impostor-53fc4-default-rtdb.firebaseio.com",
+    "project_id": "impostor-53fc4",
+    "storage_bucket": "impostor-53fc4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370050164069:android:cd8bc75cd6d7cec0b5ed8c",
+        "android_client_info": {
+          "package_name": "com.example.impostor2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDy-LFot2-fXG6KwI84expxe8wWM7uVkik"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
