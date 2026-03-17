@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+// IMPORTACIONES PARA FIREBASE Y QR
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../services/sala_service.dart';
@@ -23,7 +24,7 @@ import 'lobby_components.dart';
 class MenuLobby extends StatefulWidget {
   final Map<String, int>? puntajesGuardados;
   final ConfiguracionJuego? configGuardada;
-  final String? salaReconectada; // 🔥 NUEVO: Para no perder a los invitados web
+  final String? salaReconectada;
 
   const MenuLobby({super.key, this.puntajesGuardados, this.configGuardada, this.salaReconectada});
   @override
@@ -51,7 +52,7 @@ class _MenuLobbyState extends State<MenuLobby> {
   @override
   void initState() {
     super.initState();
-    // 🔥 MAGIA DE RECONEXIÓN: Si venimos de jugar, reciclamos la sala
+    // MAGIA DE RECONEXIÓN: Si venimos de jugar, reciclamos la sala
     if (widget.salaReconectada != null) {
       codigoSalaActual = widget.salaReconectada;
       FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({'estado': 'lobby'});
@@ -65,7 +66,9 @@ class _MenuLobbyState extends State<MenuLobby> {
     if (widget.configGuardada != null) {
       config = widget.configGuardada!;
       for (var key in baseDeDatos.keys) {
-        if (!config.categoriasActivas.containsKey(key)) config.categoriasActivas[key] = true;
+        if (!config.categoriasActivas.containsKey(key)) {
+          config.categoriasActivas[key] = true;
+        }
       }
     } else {
       Map<String, bool> cats = {};
@@ -119,7 +122,12 @@ class _MenuLobbyState extends State<MenuLobby> {
   }
 
   Widget _buildRuleContainer({required Color color, required Widget child}) {
-    return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.6), width: 1.5)), child: child);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: ebonyInput, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.6), width: 1.5)),
+      child: child,
+    );
   }
 
   void agregarJugador() {
@@ -155,7 +163,8 @@ class _MenuLobbyState extends State<MenuLobby> {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        margin: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
+        margin: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
         child: SafeArea(
           child: Wrap(
             children: [
@@ -172,7 +181,8 @@ class _MenuLobbyState extends State<MenuLobby> {
   }
 
   void _mostrarDialogoEditar(int index) {
-    String nombreAnterior = jugadores[index]; TextEditingController editCtrl = TextEditingController(text: nombreAnterior);
+    String nombreAnterior = jugadores[index];
+    TextEditingController editCtrl = TextEditingController(text: nombreAnterior);
     showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -189,11 +199,19 @@ class _MenuLobbyState extends State<MenuLobby> {
 
   void agregarPalabra() {
     if (_palabraCtrl.text.isNotEmpty && _pistaCtrl.text.isNotEmpty && _categoriaCtrl.text.isNotEmpty) {
-      setState(() { packPersonalizado.add(CartaJuego(_palabraCtrl.text, _pistaCtrl.text, categoria: _categoriaCtrl.text)); _palabraCtrl.clear(); _pistaCtrl.clear(); _categoriaCtrl.clear(); }); _guardarTodo(); Navigator.pop(context);
+      setState(() {
+        packPersonalizado.add(CartaJuego(_palabraCtrl.text, _pistaCtrl.text, categoria: _categoriaCtrl.text));
+        _palabraCtrl.clear(); _pistaCtrl.clear(); _categoriaCtrl.clear();
+      });
+      _guardarTodo();
+      Navigator.pop(context);
     }
   }
 
-  void borrarPalabraPersonalizada(int index) { setState(() => packPersonalizado.removeAt(index)); _guardarTodo(); }
+  void borrarPalabraPersonalizada(int index) {
+    setState(() => packPersonalizado.removeAt(index));
+    _guardarTodo();
+  }
 
   void mostrarDialogoCrear() {
     showDialog(
@@ -201,8 +219,20 @@ class _MenuLobbyState extends State<MenuLobby> {
         builder: (_) => AlertDialog(
             backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGoldDark, width: 2)),
             title: const Text("CREAR PALABRA", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [GoldInput(controller: _palabraCtrl, hint: "Palabra"), const SizedBox(height: 10), GoldInput(controller: _pistaCtrl, hint: "Pista"), const SizedBox(height: 10), GoldInput(controller: _categoriaCtrl, hint: "Categoría")])),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: agregarPalabra, child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.bold)))]
+            content: SingleChildScrollView(
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GoldInput(controller: _palabraCtrl, hint: "Palabra"), const SizedBox(height: 10),
+                      GoldInput(controller: _pistaCtrl, hint: "Pista"), const SizedBox(height: 10),
+                      GoldInput(controller: _categoriaCtrl, hint: "Categoría"),
+                    ]
+                )
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCELAR", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))),
+              ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: jewelGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: agregarPalabra, child: const Text("GUARDAR", style: TextStyle(fontWeight: FontWeight.bold)))
+            ]
         )
     );
   }
@@ -214,8 +244,24 @@ class _MenuLobbyState extends State<MenuLobby> {
             builder: (context, setStateDialog) => AlertDialog(
                 backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGoldDark, width: 2)),
                 title: const Text("MIS PALABRAS", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold)),
-                content: SizedBox(width: double.maxFinite, height: 300, child: packPersonalizado.isEmpty ? const Center(child: Text("Lista vacía", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))) : ListView.builder(itemCount: packPersonalizado.length, itemBuilder: (context, index) => Container(margin: const EdgeInsets.only(bottom: 8), decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: goldDark, width: 1))), child: ListTile(title: Text(packPersonalizado[index].palabra, style: const TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 18)), subtitle: Text("Pista: ${packPersonalizado[index].pista}", style: const TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.w500)), trailing: IconButton(icon: const FaIcon(FontAwesomeIcons.trashCan, color: jewelRed, size: 24), onPressed: () { borrarPalabraPersonalizada(index); setStateDialog(() {}); }))))),
-                actions: [ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: ebonyInput, foregroundColor: textMain, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () => Navigator.pop(context), child: const Text("CERRAR"))]
+                content: SizedBox(
+                    width: double.maxFinite, height: 300,
+                    child: packPersonalizado.isEmpty ? const Center(child: Text("Lista vacía", style: TextStyle(color: textMuted, fontWeight: FontWeight.w600))) : ListView.builder(
+                        itemCount: packPersonalizado.length,
+                        itemBuilder: (context, index) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: goldDark, width: 1))),
+                            child: ListTile(
+                              title: Text(packPersonalizado[index].palabra, style: const TextStyle(color: textMain, fontWeight: FontWeight.w600, fontSize: 18)),
+                              subtitle: Text("Pista: ${packPersonalizado[index].pista}", style: const TextStyle(color: lobbyGoldDark, fontWeight: FontWeight.w500)),
+                              trailing: IconButton(icon: const FaIcon(FontAwesomeIcons.trashCan, color: jewelRed, size: 24), onPressed: () { borrarPalabraPersonalizada(index); setStateDialog(() {}); }),
+                            )
+                        )
+                    )
+                ),
+                actions: [
+                  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: ebonyInput, foregroundColor: textMain, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () => Navigator.pop(context), child: const Text("CERRAR"))
+                ]
             )
         )
     );
@@ -247,16 +293,45 @@ class _MenuLobbyState extends State<MenuLobby> {
                         crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
                         children: [
                           const Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("GENERALES", style: TextStyle(color: lobbyGold, fontWeight: FontWeight.bold, fontSize: 16))),
+
                           _buildRuleContainer(color: jewelBlue, child: GoldSwitch(title: "🗳️ Votación Anónima", subtitle: "Votos secretos.", value: config.modoVotacionAnonima, color: jewelBlue, onChanged: (v) => setStateDialog(() => config.modoVotacionAnonima = v))),
+
                           _buildRuleContainer(
                             color: jewelPurple,
                             child: Row(
                               children: [
-                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)), Text(config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie." : config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Inocentes." : config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Impostor/es." : "Inocentes e Impostor/es.", style: const TextStyle(color: textMuted, fontSize: 11))])),
-                                DropdownButton<VisibilidadCategoria>(value: config.mostrarCategoria, dropdownColor: const Color(0xFF1E1510), underline: const SizedBox(), style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12), items: const [DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")), DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")), DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")), DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos"))], onChanged: (val) { if (val != null) setStateDialog(() { config.mostrarCategoria = val; }); }),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text("🏷️ Mostrar Categoría", style: TextStyle(color: textMain, fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Text(
+                                          config.mostrarCategoria == VisibilidadCategoria.desactivado ? "Nadie." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloInocentes ? "Inocentes." :
+                                          config.mostrarCategoria == VisibilidadCategoria.soloImpostor ? "Impostor/es." :
+                                          "Inocentes e Impostor/es.",
+                                          style: const TextStyle(color: textMuted, fontSize: 11)
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                DropdownButton<VisibilidadCategoria>(
+                                  value: config.mostrarCategoria,
+                                  dropdownColor: const Color(0xFF1E1510),
+                                  underline: const SizedBox(),
+                                  style: const TextStyle(color: jewelBlue, fontWeight: FontWeight.bold, fontSize: 12),
+                                  items: const [
+                                    DropdownMenuItem(value: VisibilidadCategoria.desactivado, child: Text("Desactivado")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.soloInocentes, child: Text("Solo Inocentes")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.soloImpostor, child: Text("Solo Impostor")),
+                                    DropdownMenuItem(value: VisibilidadCategoria.todos, child: Text("Ambos")),
+                                  ],
+                                  onChanged: (val) { if (val != null) setStateDialog(() { config.mostrarCategoria = val; }); },
+                                ),
                               ],
                             ),
                           ),
+
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "🕵️ Pista Impostor", subtitle: "¡El Impostor ve la PISTA!", value: config.impostorTienePista, color: jewelRed, onChanged: (v) { setStateDialog(() { config.impostorTienePista = v; }); })),
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "👥 Conocer Aliados", subtitle: "Los Impostores se Conocen.", value: config.impostoresSeConocen, color: jewelRed, onChanged: (v) => setStateDialog(() => config.impostoresSeConocen = v))),
                           _buildRuleContainer(color: jewelRed, child: GoldSwitch(title: "💀 Sincronía Vital", subtitle: "Los Impostores Mueren Juntos.", value: config.muerteSincronizada, color: jewelRed, onChanged: (v) => setStateDialog(() => config.muerteSincronizada = v))),
@@ -285,7 +360,13 @@ class _MenuLobbyState extends State<MenuLobby> {
         builder: (_) => StatefulBuilder(
             builder: (context, setStateDialog) => AlertDialog(
                 backgroundColor: const Color(0xFF1E1510), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: jewelPurple, width: 2)),
-                title: Row(children: const [FaIcon(FontAwesomeIcons.layerGroup, color: jewelPurple, size: 24), SizedBox(width: 10), Text("PACKS", style: TextStyle(color: jewelPurple, fontWeight: FontWeight.bold, letterSpacing: 1.5))]),
+                title: Row(
+                  children: const [
+                    FaIcon(FontAwesomeIcons.layerGroup, color: jewelPurple, size: 24),
+                    SizedBox(width: 10),
+                    Text("PACKS", style: TextStyle(color: jewelPurple, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                  ],
+                ),
                 content: SizedBox(
                     width: double.maxFinite,
                     child: SingleChildScrollView(
@@ -327,11 +408,19 @@ class _MenuLobbyState extends State<MenuLobby> {
         poolPalabras.addAll(baseDeDatos[categoria]!.map((c) => CartaJuego(c.palabra, c.pista, categoria: categoria)));
       }
     });
+
     if (usarPersonalizadas) {
       if (packPersonalizado.isNotEmpty) poolPalabras.addAll(packPersonalizado);
-      else if (poolPalabras.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡No hay palabras disponibles!", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: jewelRed)); return; }
+      else if (poolPalabras.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡No hay palabras disponibles!", style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: jewelRed));
+        return;
+      }
     }
-    if (poolPalabras.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Activa al menos una categoría!", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)), backgroundColor: lobbyGold)); return; }
+
+    if (poolPalabras.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Activa al menos una categoría!", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)), backgroundColor: lobbyGold));
+      return;
+    }
 
     final carta = poolPalabras[Random().nextInt(poolPalabras.length)];
     Set<int> indicesImpostores = {};
@@ -347,7 +436,7 @@ class _MenuLobbyState extends State<MenuLobby> {
       return JugadorEnPartida(nombre: jugadores[index], esImpostor: indicesImpostores.contains(index), esComplice: (index == indiceComplice), rutaFoto: fotosJugadores[jugadores[index]]);
     });
 
-    // 🔥 SI YA HAY SALA ACTIVA (RECONEXIÓN), SALTAMOS EL DIÁLOGO DEL QR
+    // SI YA HAY SALA ACTIVA (RECONEXIÓN), SALTAMOS EL DIÁLOGO DEL QR
     if (codigoSalaActual != null) {
       _crearSalaFirebase(listaJugadoresObj, carta, poolPalabras);
       return;
@@ -356,7 +445,8 @@ class _MenuLobbyState extends State<MenuLobby> {
     showModalBottomSheet(
       context: context, backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        margin: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
+        margin: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: const Color(0xFF1E1510), borderRadius: BorderRadius.circular(24), border: Border.all(color: lobbyGoldDark, width: 2), boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, 8))]),
         child: SafeArea(
           child: Wrap(
             children: [
@@ -386,7 +476,7 @@ class _MenuLobbyState extends State<MenuLobby> {
 
       Map<String, dynamic> mapJugadores = {};
       for(var j in listaJugadoresObj) {
-        mapJugadores[j.nombre] = {'esImpostor': j.esImpostor, 'esComplice': j.esComplice, 'reclamadoPorId': null}; // Ojo: en la realidad el backend en la nube debería mantener IDs si ya estaban, pero esto forza la recarga
+        mapJugadores[j.nombre] = {'esImpostor': j.esImpostor, 'esComplice': j.esComplice, 'reclamadoPorId': null};
       }
 
       await FirebaseDatabase.instance.ref('salas/$codigoSalaActual').update({
@@ -405,7 +495,8 @@ class _MenuLobbyState extends State<MenuLobby> {
   }
 
   void _mostrarDialogoEsperandoInvitados(List<JugadorEnPartida> listaJugadoresObj, CartaJuego carta, List<CartaJuego> poolPalabras) {
-    String urlWeb = "https://impostor-53fc4.web.app/?sala=$codigoSalaActual";
+    // 🔥 URL DE FIREBASE CON EL TRUCO ANTI-CACHÉ VINCULADO
+    String urlWeb = "https://impostor-53fc4.web.app/?sala=$codigoSalaActual&v=${DateTime.now().millisecondsSinceEpoch}";
 
     showDialog(
         context: context, barrierDismissible: false,
@@ -490,8 +581,18 @@ class _MenuLobbyState extends State<MenuLobby> {
   @override
   Widget build(BuildContext context) {
     int categoriasActivasCount = config.categoriasActivas.values.where((v) => v).length;
+
     String emojisActivos = "";
-    if (config.modoContraReloj) emojisActivos += "⏱️ "; if (config.modoCaos) emojisActivos += "🌀 "; if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ "; if (config.rolSilencioso) emojisActivos += "🤫 "; if (config.impostorTienePista) emojisActivos += "🕵️ "; if (config.modoVotacionAnonima) emojisActivos += "🗳️ "; if (config.impostoresSeConocen) emojisActivos += "👥 "; if (config.muerteSincronizada) emojisActivos += "💀 "; if (config.rolDetective) emojisActivos += "🔍 "; if (config.rolComplice) emojisActivos += "🎭 ";
+    if (config.modoContraReloj) emojisActivos += "⏱️ ";
+    if (config.modoCaos) emojisActivos += "🌀 ";
+    if (config.mostrarCategoria != VisibilidadCategoria.desactivado) emojisActivos += "🏷️ ";
+    if (config.rolSilencioso) emojisActivos += "🤫 ";
+    if (config.impostorTienePista) emojisActivos += "🕵️ ";
+    if (config.modoVotacionAnonima) emojisActivos += "🗳️ ";
+    if (config.impostoresSeConocen) emojisActivos += "👥 ";
+    if (config.muerteSincronizada) emojisActivos += "💀 ";
+    if (config.rolDetective) emojisActivos += "🔍 ";
+    if (config.rolComplice) emojisActivos += "🎭 ";
     if (emojisActivos.isEmpty) emojisActivos = "Clásico";
 
     int maxUI = maxImpostoresPermitidos;
