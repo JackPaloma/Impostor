@@ -3,7 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../models.dart';
 import '../../widgets.dart';
 
-import 'votacion_colors.dart';
+import 'votacion_colors.dart'; // 🔥 USA SOLO SUS PROPIOS COLORES
 import 'votacion_components.dart';
 
 class PantallaVotacionTurnos extends StatefulWidget {

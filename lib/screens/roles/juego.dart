@@ -72,7 +72,7 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
     _animation = const AlwaysStoppedAnimation(0.0);
     _animController.addListener(() => setState(() => dragOffset = _animation.value));
 
-    // 🔥 VIGILANCIA EN TIEMPO REAL
+    // 🔥 VIGILANCIA EN TIEMPO REAL: ESPERAR A QUE TODOS ESTÉN LISTOS Y DETECTAR DESCONEXIONES
     if (widget.codigoSala != null) {
       _subConexion = FirebaseDatabase.instance.ref('salas/${widget.codigoSala}/jugadores').onValue.listen((event) {
         if (!mounted || _cambiandoADebate) return;
@@ -85,18 +85,18 @@ class _PantallaJuegoState extends State<PantallaJuego> with SingleTickerProvider
             String? claim = v['reclamadoPorId'];
             bool estaListo = v['listo'] ?? false;
 
-            // Alerta de desconexión
+            // 🔥 ALERTA DE DESCONEXIÓN: Si alguien que tenía ID ahora es null
             if (_estadosConexion.containsKey(nombre) && _estadosConexion[nombre] != null && claim == null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("⚠️ $nombre se ha desconectado", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: Colors.red));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const FaIcon(FontAwesomeIcons.triangleExclamation, color: Colors.white), const SizedBox(width: 10), Text("⚠️ $nombre se ha desconectado", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]), backgroundColor: Colors.red));
             }
             _estadosConexion[nombre] = claim;
 
-            // Verificar si todos están listos (solo contamos a los que están vivos)
+            // Verificar si todos los de la web están listos
             bool estaVivo = widget.listaJugadores.any((j) => j.nombre == nombre && j.estaVivo);
-            if (estaVivo && !estaListo) todosWebListos = false;
+            if (estaVivo && !estaListo && claim != null) todosWebListos = false;
           });
 
-          // Si los locales ya terminaron y la web también, vamos solos al debate
+          // Solo pasamos al debate cuando el Host (local) Y la Web han dicho "LISTO"
           if (todosLocalesListos && todosWebListos) {
             _cambiandoADebate = true;
             _irAlDebate();

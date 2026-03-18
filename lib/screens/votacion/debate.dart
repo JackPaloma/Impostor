@@ -15,7 +15,7 @@ import '../lobby/lobby.dart';
 
 import 'votacion_colors.dart';
 import 'votacion_components.dart';
-import 'votacion.dart';
+import 'votacion.dart'; // 🔥 AQUÍ ESTÁ LA IMPORTACIÓN CRÍTICA
 
 class PantallaDebate extends StatefulWidget {
   final List<JugadorEnPartida> listaJugadores;
@@ -52,7 +52,6 @@ class _PantallaDebateState extends State<PantallaDebate> {
   bool _puntoQuitado = false;
   String? _jugadorCastigado;
 
-  // 🔥 NUEVO: Evita el bucle infinito al votar dos veces
   bool _procesandoVotos = false;
 
   @override
@@ -148,7 +147,6 @@ class _PantallaDebateState extends State<PantallaDebate> {
   }
 
   void _iniciarVotacionHibrida() async {
-    // 🔥 1. BORRAMOS VOTOS ANTERIORES Y RESETEAMOS VARIABLES PARA EVITAR BUCLES
     _procesandoVotos = false;
     await FirebaseDatabase.instance.ref('salas/${widget.codigoSala}/votos').remove();
     await FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'votacion_anonima'});
@@ -163,12 +161,11 @@ class _PantallaDebateState extends State<PantallaDebate> {
               builder: (context, snap) {
                 Map votos = snap.hasData && snap.data!.snapshot.value != null ? snap.data!.snapshot.value as Map : {};
 
-                // 🔥 2. SOLO SE CIERRA SI TODOS VOTARON Y AÚN NO LO HEMOS PROCESADO
                 if (votos.length >= vivos.length && !_procesandoVotos) {
                   _procesandoVotos = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     Navigator.pop(ctx);
-                    _mostrarConteoVotos(votos); // 🔥 LLAMAMOS A LA NUEVA PANTALLA DE CONTEO
+                    _mostrarConteoVotos(votos);
                   });
                 }
 
@@ -229,86 +226,39 @@ class _PantallaDebateState extends State<PantallaDebate> {
     );
   }
 
-  // 🔥 3. NUEVA FUNCIÓN: PANTALLA DRAMÁTICA DE CONTEO
   void _mostrarConteoVotos(Map votos) async {
-    // Avisar a la web que el líder está contando
-    if (widget.codigoSala != null) {
-      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'contando_votos'});
-    }
+    if (widget.codigoSala != null) FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'contando_votos'});
 
     Map<String, int> conteo = {};
     votos.forEach((k, v) { conteo[v.toString()] = (conteo[v.toString()] ?? 0) + 1; });
-
-    // Ordenamos de mayor a menor cantidad de votos
     var listaOrdenada = conteo.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    String? expulsado;
-    int maxVotos = listaOrdenada.isNotEmpty ? listaOrdenada[0].value : 0;
-
-    // Verificar si hay empate
-    if (listaOrdenada.length == 1) {
-      expulsado = listaOrdenada[0].key;
-    } else if (listaOrdenada.length > 1) {
-      if (listaOrdenada[0].value > listaOrdenada[1].value) {
-        expulsado = listaOrdenada[0].key;
-      }
-    }
+    String? expulsado; int maxVotos = listaOrdenada.isNotEmpty ? listaOrdenada[0].value : 0;
+    if (listaOrdenada.length == 1) { expulsado = listaOrdenada[0].key; }
+    else if (listaOrdenada.length > 1) { if (listaOrdenada[0].value > listaOrdenada[1].value) { expulsado = listaOrdenada[0].key; } }
 
     await showDialog(
-        context: context,
-        barrierDismissible: false,
+        context: context, barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-            backgroundColor: ebonyCard,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGold, width: 2)),
+            backgroundColor: ebonyCard, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: lobbyGold, width: 2)),
             title: const Text("RESULTADOS", textAlign: TextAlign.center, style: TextStyle(color: lobbyGold, fontSize: 24, fontWeight: FontWeight.bold)),
             content: SizedBox(
                 width: 300,
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      ...listaOrdenada.map((e) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(e.key.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                Row(
-                                    children: [
-                                      Text("${e.value}", style: const TextStyle(color: jewelRed, fontSize: 22, fontWeight: FontWeight.w900)),
-                                      const SizedBox(width: 5),
-                                      const FaIcon(FontAwesomeIcons.ticket, color: jewelRed, size: 16)
-                                    ]
-                                )
-                              ]
-                          )
-                      )).toList(),
+                      ...listaOrdenada.map((e) => Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(e.key.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Row(children: [Text("${e.value}", style: const TextStyle(color: jewelRed, fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(width: 5), const FaIcon(FontAwesomeIcons.ticket, color: jewelRed, size: 16)])]))).toList(),
                       const Divider(color: goldDark, height: 30, thickness: 2),
-                      Text(
-                          expulsado != null ? "¡$expulsado ES EXPULSADO!" : "¡EMPATE! NADIE SALE.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: expulsado != null ? jewelRed : jewelBlue, fontSize: 20, fontWeight: FontWeight.w900)
-                      )
+                      Text(expulsado != null ? "¡$expulsado ES EXPULSADO!" : "¡EMPATE! NADIE SALE.", textAlign: TextAlign.center, style: TextStyle(color: expulsado != null ? jewelRed : jewelBlue, fontSize: 20, fontWeight: FontWeight.w900))
                     ]
                 )
             ),
-            actions: [
-              Center(
-                  child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: lobbyGoldDark, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text("CONTINUAR", style: TextStyle(fontWeight: FontWeight.bold))
-                  )
-              )
-            ]
+            actions: [Center(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: lobbyGoldDark, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)), onPressed: () => Navigator.pop(ctx), child: const Text("CONTINUAR", style: TextStyle(fontWeight: FontWeight.bold))))]
         )
     );
 
-    // Tras dar clic a continuar, se ejecuta el resultado
-    if (expulsado != null) {
-      ejecutarExpulsion(widget.listaJugadores.firstWhere((j) => j.nombre == expulsado));
-    } else {
-      ejecutarEventosRonda();
-    }
+    if (expulsado != null) ejecutarExpulsion(widget.listaJugadores.firstWhere((j) => j.nombre == expulsado));
+    else ejecutarEventosRonda();
   }
 
   void abrirVotacion() {
@@ -375,7 +325,12 @@ class _PantallaDebateState extends State<PantallaDebate> {
     });
     _guardarPuntajesEnDisco();
 
-    if (widget.codigoSala != null) FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'puntajes', 'resultados': {'ganador': gananInocentes ? "INOCENTES" : "IMPOSTORES", 'puntajes': widget.puntajes}});
+    if (widget.codigoSala != null) {
+      FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({
+        'estado': 'puntajes',
+        'resultados': {'ganador': gananInocentes ? "INOCENTES" : "IMPOSTORES", 'puntajes': widget.puntajes, 'tiempoFinal': formatoTiempo}
+      });
+    }
   }
 
   void ejecutarEventosRonda() async {
@@ -398,15 +353,17 @@ class _PantallaDebateState extends State<PantallaDebate> {
       }
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PantallaJuego(listaJugadores: widget.listaJugadores, puntajes: widget.puntajes, carta: nuevaCarta, config: widget.config, packUsado: widget.packUsado, codigoSala: widget.codigoSala, jugadoresReclamadosWeb: widget.jugadoresReclamadosWeb)));
     } else {
-      if (widget.codigoSala != null) {
-        FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'debate'});
-      }
+      if (widget.codigoSala != null) FirebaseDatabase.instance.ref('salas/${widget.codigoSala}').update({'estado': 'debate'});
     }
   }
 
   void abrirDialogoCastigo() {
     showDialog(
-      context: context, builder: (context) => AlertDialog(backgroundColor: ebonyCard, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: jewelRed, width: 2)), title: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [FaIcon(FontAwesomeIcons.bolt, color: jewelRed), SizedBox(width: 10), Text("CASTIGAR A...", style: TextStyle(color: jewelRed))]), content: SizedBox(width: double.maxFinite, height: 300, child: ListView.builder(itemCount: widget.listaJugadores.length, itemBuilder: (context, index) { final jugador = widget.listaJugadores[index]; return Padding(padding: const EdgeInsets.only(bottom: 8.0), child: GoldButton(text: "${jugador.nombre.toUpperCase()} (${widget.puntajes[jugador.nombre]})", colorOverride: ebonyInput, textColorOverride: textMain, onPressed: () { setState(() { widget.puntajes[jugador.nombre] = (widget.puntajes[jugador.nombre] ?? 0) - 1; _puntoQuitado = true; _jugadorCastigado = jugador.nombre; }); _guardarPuntajesEnDisco(); Navigator.pop(context); Sonidos.playReveal(); })); })), actions: [Center(child: SizedBox(width: 200, child: GoldButton(text: "CANCELAR", colorOverride: ebonyInput, textColorOverride: textMuted, onPressed: () => Navigator.pop(context))))]),
+      context: context, builder: (context) => AlertDialog(backgroundColor: ebonyCard, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: jewelRed, width: 2)), title: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [FaIcon(FontAwesomeIcons.bolt, color: jewelRed), SizedBox(width: 10), Text("CASTIGAR A...", style: TextStyle(color: jewelRed))]), content: SizedBox(width: double.maxFinite, height: 300, child: ListView.builder(itemCount: widget.listaJugadores.length, itemBuilder: (context, index) { final jugador = widget.listaJugadores[index]; return Padding(padding: const EdgeInsets.only(bottom: 8.0), child: GoldButton(text: "${jugador.nombre.toUpperCase()} (${widget.puntajes[jugador.nombre]})", colorOverride: ebonyInput, textColorOverride: textMain, onPressed: () {
+      setState(() { widget.puntajes[jugador.nombre] = (widget.puntajes[jugador.nombre] ?? 0) - 1; _puntoQuitado = true; _jugadorCastigado = jugador.nombre; }); _guardarPuntajesEnDisco();
+      if (widget.codigoSala != null) FirebaseDatabase.instance.ref('salas/${widget.codigoSala}/resultados/puntajes').set(widget.puntajes);
+      Navigator.pop(context); Sonidos.playReveal();
+    })); })), actions: [Center(child: SizedBox(width: 200, child: GoldButton(text: "CANCELAR", colorOverride: ebonyInput, textColorOverride: textMuted, onPressed: () => Navigator.pop(context))))]),
     );
   }
 
